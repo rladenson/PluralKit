@@ -35,6 +35,8 @@ public class ProxyService
     private readonly WebhookExecutorService _webhookExecutor;
     private readonly NodaTime.IClock _clock;
 
+    private static readonly string URL_REGEX = @"(http|https)(:\/\/)?(www\.)?([-a-zA-Z0-9@:%._\+~#=]{1,256})?\.?([a-zA-Z0-9()]{1,6})?\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$";
+
     public ProxyService(LogChannelService logChannel, ILogger logger, WebhookExecutorService webhookExecutor,
             DispatchService dispatch, IDatabase db, RedisService redis, ProxyMatcher matcher, IMetrics metrics, ModelRepository repo,
                       NodaTime.IClock clock, IDiscordCache cache, DiscordApiClient rest, LastMessageCacheService lastMessage)
@@ -57,7 +59,9 @@ public class ProxyService
     public async Task<bool> HandleIncomingMessage(MessageCreateEvent message, MessageContext ctx,
                                 Guild guild, Channel channel, bool allowAutoproxy, PermissionSet botPermissions)
     {
-        if (!ShouldProxy(channel, message, ctx))
+        var rootChannel = await _cache.GetRootChannel(message.ChannelId);
+
+        if (!ShouldProxy(channel, rootChannel, message, ctx))
             return false;
 
         var autoproxySettings = await _repo.GetAutoproxySettings(ctx.SystemId.Value, guild.Id, null);
@@ -72,8 +76,6 @@ public class ProxyService
             return false;
         }
 
-        var rootChannel = await _cache.GetRootChannel(message.ChannelId);
-
         List<ProxyMember> members;
         // Fetch members and try to match to a specific member
         using (_metrics.Measure.Timer.Time(BotMetrics.ProxyMembersQueryTime))
@@ -82,7 +84,7 @@ public class ProxyService
         if (!_matcher.TryMatch(ctx, autoproxySettings, members, out var match, message.Content, message.Attachments.Length > 0,
                 allowAutoproxy, ctx.CaseSensitiveProxyTags)) return false;
 
-        var canProxy = await CanProxy(channel, message, ctx);
+        var canProxy = await CanProxy(channel, rootChannel, message, ctx);
         if (canProxy != null)
         {
             if (ctx.ProxyErrorMessageEnabled)
@@ -109,8 +111,32 @@ public class ProxyService
         return true;
     }
 
-    public async Task<string> CanProxy(Channel channel, Message msg, MessageContext ctx)
+#pragma warning disable CA1822 // Mark members as static
+    internal bool CanProxyInChannel(Channel ch, bool isRootChannel = false)
+#pragma warning restore CA1822 // Mark members as static
     {
+        // this is explicitly selecting known channel types so that when Discord add new
+        // ones, users don't get flooded with error codes if that new channel type doesn't
+        // support a feature we need for proxying
+        return ch.Type switch
+        {
+            Channel.ChannelType.GuildText => true,
+            Channel.ChannelType.GuildPublicThread => true,
+            Channel.ChannelType.GuildPrivateThread => true,
+            Channel.ChannelType.GuildNews => true,
+            Channel.ChannelType.GuildNewsThread => true,
+            Channel.ChannelType.GuildVoice => true,
+            Channel.ChannelType.GuildStageVoice => true,
+            Channel.ChannelType.GuildForum => isRootChannel,
+            _ => false,
+        };
+    }
+
+    public async Task<string> CanProxy(Channel channel, Channel rootChannel, Message msg, MessageContext ctx)
+    {
+        if (!(CanProxyInChannel(channel) && CanProxyInChannel(rootChannel, true)))
+            return $"PluralKit cannot proxy messages in this type of channel.";
+
         // Check if the message does not go over any Discord Nitro limits
         if (msg.Content != null && msg.Content.Length > 2000)
         {
@@ -132,7 +158,7 @@ public class ProxyService
         return null;
     }
 
-    public bool ShouldProxy(Channel channel, Message msg, MessageContext ctx)
+    public bool ShouldProxy(Channel channel, Channel rootChannel, Message msg, MessageContext ctx)
     {
         // Make sure author has a system
         if (ctx.SystemId == null)
@@ -360,12 +386,16 @@ public class ProxyService
                         msg += mentionTail + ">";
                 }
 
-                var endsWithUrl = Regex.IsMatch(msg,
-                    @"(http|https)(:\/\/)?(www\.)?([-a-zA-Z0-9@:%._\+~#=]{1,256})?\.?([a-zA-Z0-9()]{1,6})?\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$");
+                var endsWithUrl = Regex.IsMatch(msg, URL_REGEX);
                 if (endsWithUrl)
                 {
-                    var urlTail = repliedTo.Content.Substring(100).Split(" ")[0];
-                    msg += urlTail + " ";
+                    msg += repliedTo.Content.Substring(100).Split(" ")[0];
+
+                    // replace the entire URL with a placeholder if it's *too* long
+                    if (msg.Length > 300)
+                        msg = Regex.Replace(msg, URL_REGEX, $"*[(very long link removed, click to see original message)]({jumpLink})*");
+
+                    msg += " ";
                 }
 
                 var spoilersInOriginalString = Regex.Matches(repliedTo.Content, @"\|\|").Count;
@@ -386,7 +416,7 @@ public class ProxyService
             content.Append($"*[(click to see attachment)]({jumpLink})*");
         }
 
-        var username = nickname ?? repliedTo.Author.Username;
+        var username = nickname ?? repliedTo.Author.GlobalName ?? repliedTo.Author.Username;
         var avatarUrl = avatar != null
             ? $"https://cdn.discordapp.com/guilds/{trigger.GuildId}/users/{repliedTo.Author.Id}/avatars/{avatar}.png"
             : $"https://cdn.discordapp.com/avatars/{repliedTo.Author.Id}/{repliedTo.Author.Avatar}.png";
