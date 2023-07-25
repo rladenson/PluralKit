@@ -267,7 +267,7 @@ public class EmbedService
 
     public async Task<Embed> CreateGroupEmbed(Context ctx, PKSystem system, PKGroup target)
     {
-        var pctx = ctx.LookupContextFor(system.Id);
+        var pctx = await ctx.LookupContextFor(system.Id);
 
         var countctx = LookupContext.ByNonOwner;
         if (ctx.MatchFlag("a", "all"))
@@ -280,7 +280,7 @@ public class EmbedService
 
         var memberCount = await _repo.GetGroupMemberCount(target.Id, countctx == LookupContext.ByOwner ? null : PrivacyLevel.Public);
 
-        var nameField = target.NameFor(ctx);
+        var nameField = await target.NameFor(ctx);
         var systemGuildSettings = ctx.Guild != null ? await _repo.GetSystemGuild(ctx.Guild.Id, system.Id) : null;
         if (systemGuildSettings != null && systemGuildSettings.DisplayName != null)
             nameField = $"{nameField} ({systemGuildSettings.DisplayName})";
@@ -319,11 +319,11 @@ public class EmbedService
             if (memberCount == 0 && pctx == LookupContext.ByOwner)
                 // Only suggest the add command if this is actually the owner lol
                 eb.Field(new Embed.Field("Members (0)",
-                    $"Add one with `pk;group {target.Reference(ctx)} add <member>`!"));
+                    $"Add one with `pk;group {await target.Reference(ctx)} add <member>`!"));
             else
             {
                 var name = pctx == LookupContext.ByOwner
-                    ? target.Reference(ctx)
+                    ? await target.Reference(ctx)
                     : target.Hid;
                 eb.Field(new Embed.Field($"Members ({memberCount})", $"(see `pk;group {name} list`)"));
             }
@@ -521,5 +521,36 @@ public class EmbedService
                     .FormatDuration(), true));
 
         return Task.FromResult(eb.Build());
+    }
+
+    public async Task<Embed> CreateTrustedEmbed(Context ctx, IEnumerable<ulong> userIds)
+    {
+        var color = ctx.System.Color;
+        uint? embedColor;
+        try
+        {
+            embedColor = color?.ToDiscordColor();
+        }
+        catch (ArgumentException)
+        {
+            embedColor = null;
+        }
+
+        var eb = new EmbedBuilder()
+            .Title("Trusted users for your system")
+            .Color(embedColor)
+            .Footer(new Embed.EmbedFooter($"Showing trusted users for the system {ctx.System.NameFor(LookupContext.ByOwner)}"));
+
+        if (userIds.Any())
+        {
+            var users = (await GetUsers(userIds)).Select(x => x.User?.NameAndMention() ?? $"(deleted account {x.Id})");
+            eb.Description(string.Join("\n", users).Truncate(4000));
+        }
+        else
+        {
+            eb.Description("*(none)*");
+        }
+
+        return eb.Build();
     }
 }

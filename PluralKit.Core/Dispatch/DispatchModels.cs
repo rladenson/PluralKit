@@ -28,7 +28,9 @@ public enum DispatchEvent
     UPDATE_SWITCH,
     DELETE_SWITCH,
     DELETE_ALL_SWITCHES,
-    SUCCESSFUL_IMPORT
+    SUCCESSFUL_IMPORT,
+    ADD_TRUSTED_USER,
+    REMOVE_TRUSTED_USER,
 }
 
 public struct UpdateDispatchData

@@ -53,9 +53,10 @@ public static class ContextListExt
         // Privacy filter (default is public only)
         if (ctx.MatchFlag("a", "all")) p.PrivacyFilter = null;
         if (ctx.MatchFlag("private-only", "po")) p.PrivacyFilter = PrivacyLevel.Private;
+        if (ctx.MatchFlag("trusted-only", "to")) p.PrivacyFilter = PrivacyLevel.Trusted;
 
-        // PERM CHECK: If we're trying to access non-public members of another system, error
-        if (p.PrivacyFilter != PrivacyLevel.Public && lookupCtx != LookupContext.ByOwner)
+            // PERM CHECK: If we're trying to access non-public members of another system, error
+        if (p.PrivacyFilter != PrivacyLevel.Public && lookupCtx != LookupContext.ByOwner) //TODO
             // TODO: should this just return null instead of throwing or something? >.>
             throw Errors.NotOwnInfo;
 
@@ -158,7 +159,7 @@ public static class ContextListExt
             }));
         }
 
-        void LongRenderer(EmbedBuilder eb, IEnumerable<ListedMember> page)
+        async void LongRenderer(EmbedBuilder eb, IEnumerable<ListedMember> page)
         {
             foreach (var m in page)
             {
@@ -200,7 +201,7 @@ public static class ContextListExt
                 if (m.MemberVisibility == PrivacyLevel.Private)
                     profile.Append("\n*(this member is hidden)*");
 
-                eb.Field(new Embed.Field(m.NameFor(ctx), profile.ToString().Truncate(1024)));
+                eb.Field(new Embed.Field(await m.NameFor(ctx), profile.ToString().Truncate(1024)));
             }
         }
     }
@@ -304,7 +305,7 @@ public static class ContextListExt
             }));
         }
 
-        void LongRenderer(EmbedBuilder eb, IEnumerable<ListedGroup> page)
+        async void LongRenderer(EmbedBuilder eb, IEnumerable<ListedGroup> page)
         {
             foreach (var g in page)
             {
@@ -334,7 +335,7 @@ public static class ContextListExt
                 if (g.Visibility == PrivacyLevel.Private)
                     profile.Append("\n*(this group is hidden)*");
 
-                eb.Field(new Embed.Field(g.NameFor(ctx), profile.ToString().Truncate(1024)));
+                eb.Field(new Embed.Field(await g.NameFor(ctx), profile.ToString().Truncate(1024)));
             }
         }
     }

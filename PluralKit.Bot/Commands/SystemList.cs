@@ -19,7 +19,7 @@ public class SystemList
         // the own system is always allowed to look up their list
         var opts = ctx.ParseListOptions(ctx.DirectLookupContextFor(target.Id));
         await ctx.RenderMemberList(
-            ctx.LookupContextFor(target.Id),
+            await ctx.LookupContextFor(target.Id),
             target.Id,
             await GetEmbedTitle(target, opts, ctx),
             target.Color,

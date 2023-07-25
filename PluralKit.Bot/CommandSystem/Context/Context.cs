@@ -144,29 +144,61 @@ public class Context
     public LookupContext DirectLookupContextFor(SystemId systemId)
         => System?.Id == systemId ? LookupContext.ByOwner : LookupContext.ByNonOwner;
 
-    public LookupContext LookupContextFor(SystemId systemId)
+    public async Task<LookupContext> LookupContextFor(SystemId systemId)
     {
+        var trusted = await this.CheckTrusted(systemId);
+
         var hasPrivateOverride = this.MatchFlag("private", "priv");
         var hasPublicOverride = this.MatchFlag("public", "pub");
+        var hasTrustedOverride = this.MatchFlag("trusted", "tru");
 
-        if (hasPrivateOverride && hasPublicOverride)
-            throw new PKError("Cannot match both public and private flags at the same time.");
+        var overrideCount = new[] { hasPrivateOverride, hasPublicOverride, hasTrustedOverride }.Count(e => e);
 
-        if (System?.Id != systemId)
-        {
-            if (hasPrivateOverride)
-                throw Errors.NotOwnInfo;
-            return LookupContext.ByNonOwner;
-        }
+        if (overrideCount > 1)
+            throw new PKError("Cannot match more than one type of privacy flag (`-private`, `-public`, `-trusted`) at once.");
 
         if (hasPrivateOverride)
-            return LookupContext.ByOwner;
-        if (hasPublicOverride)
-            return LookupContext.ByNonOwner;
+        {
+            if (System?.Id == systemId)
+                return LookupContext.ByOwner;
+            throw Errors.NotOwnInfo;
+        }
+        
+        if (hasTrustedOverride)
+        {
+            if (System?.Id == systemId || trusted)
+                return LookupContext.ByTrusted;
+            throw Errors.NotTrusted;
+        }
 
-        return Config.ShowPrivateInfo
-            ? LookupContext.ByOwner
-            : LookupContext.ByNonOwner;
+        if (hasPublicOverride)
+        {
+            return LookupContext.ByNonOwner;
+        }
+        
+        if (System?.Id == systemId)
+        {
+            return Config.DefaultPrivacyShown switch
+            {
+                PrivacyLevel.Private => LookupContext.ByOwner,
+                PrivacyLevel.Public => LookupContext.ByNonOwner,
+                PrivacyLevel.Trusted => LookupContext.ByTrusted,
+                _ => LookupContext.ByNonOwner,
+            };
+        }
+
+        if (trusted)
+        {
+            return Config.DefaultPrivacyShown switch
+            {
+                PrivacyLevel.Private => LookupContext.ByTrusted,
+                PrivacyLevel.Trusted => LookupContext.ByTrusted,
+                PrivacyLevel.Public => LookupContext.ByNonOwner,
+                _ => LookupContext.ByNonOwner
+            };
+        }
+
+        return LookupContext.ByNonOwner;
     }
 
     public IComponentContext Services => _provider;

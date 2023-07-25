@@ -768,7 +768,9 @@ public class SystemEdit
                 .Field(new Embed.Field("Current fronter(s)", target.FrontPrivacy.Explanation()))
                 .Field(new Embed.Field("Front/switch history", target.FrontHistoryPrivacy.Explanation()))
                 .Description(
-                    "To edit privacy settings, use the command:\n`pk;system privacy <subject> <level>`\n\n- `subject` is one of `name`, `avatar`, `description`, `list`, `front`, `fronthistory`, `groups`, or `all` \n- `level` is either `public` or `private`.");
+                    "To edit privacy settings, use the command:\n`pk;system privacy <subject> <level>`\n\n" + 
+                    "- `subject` is one of `name`, `avatar`, `description`, `list`, `front`, `fronthistory`, `groups`, or `all`\n" + 
+                    "- `level` is either `public`, `private`, or `trusted`.");
             return ctx.Reply(embed: eb.Build());
         }
 
@@ -780,6 +782,7 @@ public class SystemEdit
             {
                 PrivacyLevel.Public => "be able to query",
                 PrivacyLevel.Private => "*not* be able to query",
+                PrivacyLevel.Trusted => "*only if trusted* be able to query",
                 _ => ""
             };
 
@@ -808,9 +811,16 @@ public class SystemEdit
             var msg = level switch
             {
                 PrivacyLevel.Private =>
-                    $"All system privacy settings have been set to **{level.LevelName()}**. Other accounts will now not be able to view your member list, group list, front history, or system description.",
+                    $"All system privacy settings have been set to **{level.LevelName()}**. " + 
+                    "Other accounts will now not be able to view your system name, system icon, system description, " + 
+                    "system pronouns, member list, group list, current fronter(s), or front history.",
                 PrivacyLevel.Public =>
-                    $"All system privacy settings have been set to **{level.LevelName()}**. Other accounts will now be able to view everything.",
+                    $"All system privacy settings have been set to **{level.LevelName()}**. " + 
+                    "Other accounts will now be able to view everything.",
+                PrivacyLevel.Trusted =>
+                    $"All system privacy settings have been set to **{level.LevelName()}**. " + 
+                    "Other accounts will now not be able to view your system name, system icon, system description, " + 
+                    "system pronouns, member list, group list, current fronter(s), or front history *unless they are trusted*.",
                 _ => ""
             };
 

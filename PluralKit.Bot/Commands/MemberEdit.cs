@@ -66,7 +66,7 @@ public class MemberEdit
         var noDescriptionSetMessage = "This member does not have a description set.";
         if (ctx.System?.Id == target.System)
             noDescriptionSetMessage +=
-                $" To set one, type `pk;member {target.Reference(ctx)} description <description>`.";
+                $" To set one, type `pk;member {await target.Reference(ctx)} description <description>`.";
 
         if (ctx.MatchRaw())
         {
@@ -88,7 +88,7 @@ public class MemberEdit
                     .Field(new Embed.Field("\u200B",
                         $"To print the description with formatting, type `pk;member {target.Reference(ctx)} description -raw`."
                         + (ctx.System?.Id == target.System
-                            ? $" To clear it, type `pk;member {target.Reference(ctx)} description -clear`."
+                            ? $" To clear it, type `pk;member {await target.Reference(ctx)} description -clear`."
                             : "")
                         + $" Using {target.Description.Length}/{Limits.MaxDescriptionLength} characters."))
                     .Build());
@@ -120,7 +120,7 @@ public class MemberEdit
     {
         var noPronounsSetMessage = "This member does not have pronouns set.";
         if (ctx.System?.Id == target.System)
-            noPronounsSetMessage += $"To set some, type `pk;member {target.Reference(ctx)} pronouns <pronouns>`.";
+            noPronounsSetMessage += $"To set some, type `pk;member {await target.Reference(ctx)} pronouns <pronouns>`.";
 
         ctx.CheckSystemPrivacy(target.System, target.PronounPrivacy);
 
@@ -139,9 +139,9 @@ public class MemberEdit
                 await ctx.Reply(noPronounsSetMessage);
             else
                 await ctx.Reply(
-                    $"**{target.NameFor(ctx)}**'s pronouns are **{target.Pronouns}**.\nTo print the pronouns with formatting, type `pk;member {target.Reference(ctx)} pronouns -raw`."
+                    $"**{target.NameFor(ctx)}**'s pronouns are **{target.Pronouns}**.\nTo print the pronouns with formatting, type `pk;member {await target.Reference(ctx)} pronouns -raw`."
                     + (ctx.System?.Id == target.System
-                        ? $" To clear them, type `pk;member {target.Reference(ctx)} pronouns -clear`."
+                        ? $" To clear them, type `pk;member {await target.Reference(ctx)} pronouns -clear`."
                         : "")
                     + $" Using {target.Pronouns.Length}/{Limits.MaxPronounsLength} characters.");
             return;
@@ -235,7 +235,7 @@ public class MemberEdit
         {
             if (target.Color == null)
                 await ctx.Reply(
-                    "This member does not have a color set." + (isOwnSystem ? $" To set one, type `pk;member {target.Reference(ctx)} color <color>`." : ""));
+                    "This member does not have a color set." + (isOwnSystem ? $" To set one, type `pk;member {await target.Reference(ctx)} color <color>`." : ""));
             else if (matchedRaw)
                 await ctx.Reply("```\n#" + target.Color + "\n```");
             else
@@ -244,7 +244,7 @@ public class MemberEdit
                     .Color(target.Color.ToDiscordColor())
                     .Thumbnail(new Embed.EmbedThumbnail($"https://fakeimg.pl/256x256/{target.Color}/?text=%20"))
                     .Description($"This member's color is **#{target.Color}**."
-                        + (isOwnSystem ? $" To clear it, type `pk;member {target.Reference(ctx)} color -clear`." : ""))
+                        + (isOwnSystem ? $" To clear it, type `pk;member {await target.Reference(ctx)} color -clear`." : ""))
                     .Build());
             return;
         }
@@ -293,12 +293,12 @@ public class MemberEdit
             if (target.Birthday == null)
                 await ctx.Reply("This member does not have a birthdate set."
                                 + (ctx.System?.Id == target.System
-                                    ? $" To set one, type `pk;member {target.Reference(ctx)} birthdate <birthdate>`."
+                                    ? $" To set one, type `pk;member {await target.Reference(ctx)} birthdate <birthdate>`."
                                     : ""));
             else
                 await ctx.Reply($"This member's birthdate is **{target.BirthdayString}**."
                                 + (ctx.System?.Id == target.System
-                                    ? $" To clear it, type `pk;member {target.Reference(ctx)} birthdate -clear`."
+                                    ? $" To clear it, type `pk;member {await target.Reference(ctx)} birthdate -clear`."
                                     : ""));
         }
         else
@@ -326,7 +326,7 @@ public class MemberEdit
 
     private async Task<EmbedBuilder> CreateMemberNameInfoEmbed(Context ctx, PKMember target)
     {
-        var lcx = ctx.LookupContextFor(target.System);
+        var lcx = await ctx.LookupContextFor(target.System);
 
         MemberGuildSettings memberGuildConfig = null;
         if (ctx.Guild != null)
@@ -342,7 +342,7 @@ public class MemberEdit
         var showDisplayName = target.NamePrivacy.CanAccess(lcx);
 
         eb.Field(new Embed.Field("Name", boldIf(
-            target.NameFor(ctx),
+            await target.NameFor(ctx),
             (!showDisplayName || target.DisplayName == null) && memberGuildConfig?.DisplayName == null
         )));
 
@@ -380,7 +380,7 @@ public class MemberEdit
         var noDisplayNameSetMessage = "This member does not have a display name set.";
         if (ctx.System?.Id == target.System)
             noDisplayNameSetMessage +=
-                $" To set one, type `pk;member {target.Reference(ctx)} displayname <display name>`.";
+                $" To set one, type `pk;member {await target.Reference(ctx)} displayname <display name>`.";
 
         // No perms check, display name isn't covered by member privacy
 
@@ -396,7 +396,7 @@ public class MemberEdit
         if (!ctx.HasNext(false))
         {
             var eb = await CreateMemberNameInfoEmbed(ctx, target);
-            var reference = target.Reference(ctx);
+            var reference = await target.Reference(ctx);
             if (ctx.System?.Id == target.System)
                 eb.Description(
                     $"To change display name, type `pk;member {reference} displayname <display name>`.\n"
@@ -441,7 +441,7 @@ public class MemberEdit
         var noServerNameSetMessage = "This member does not have a server name set.";
         if (ctx.System?.Id == target.System)
             noServerNameSetMessage +=
-                $" To set one, type `pk;member {target.Reference(ctx)} servername <server name>`.";
+                $" To set one, type `pk;member {await target.Reference(ctx)} servername <server name>`.";
 
         // No perms check, display name isn't covered by member privacy
         var memberGuildConfig = await ctx.Repository.GetMemberGuild(ctx.Guild.Id, target.Id);
@@ -458,7 +458,7 @@ public class MemberEdit
         if (!ctx.HasNext(false))
         {
             var eb = await CreateMemberNameInfoEmbed(ctx, target);
-            var reference = target.Reference(ctx);
+            var reference = await target.Reference(ctx);
             if (ctx.System?.Id == target.System)
                 eb.Description(
                     $"To change server name, type `pk;member {reference} servername <server name>`.\nTo clear it, type `pk;member {reference} servername -clear`.\nTo print the raw server name, type `pk;member {reference} servername -raw`.");
@@ -620,7 +620,9 @@ public class MemberEdit
                     target.MetadataPrivacy.Explanation()))
                 .Field(new Embed.Field("Visibility", target.MemberVisibility.Explanation()))
                 .Description(
-                    "To edit privacy settings, use the command:\n`pk;member <member> privacy <subject> <level>`\n\n- `subject` is one of `name`, `description`, `avatar`, `birthday`, `pronouns`, `proxies`, `metadata`, `visibility`, or `all`\n- `level` is either `public` or `private`.")
+                    "To edit privacy settings, use the command:\n`pk;member <member> privacy <subject> <level>`\n\n" + 
+                    "- `subject` is one of `name`, `description`, `avatar`, `birthday`, `pronouns`, `proxies`, `metadata`, `visibility`, or `all`\n" + 
+                    "- `level` is either `public`, `private`, or `trusted`.")
                 .Build());
             return;
         }
@@ -710,7 +712,7 @@ public class MemberEdit
             if (subject == MemberPrivacySubject.Avatar && level == PrivacyLevel.Private &&
                 guildSettings?.AvatarUrl == null)
                 await ctx.Reply(
-                    $"{Emojis.Warn} This member does not have a server avatar set, so *proxying* will **still show the member avatar**. If you want to hide your avatar when proxying here, set a server avatar: `pk;member {target.Reference(ctx)} serveravatar`");
+                    $"{Emojis.Warn} This member does not have a server avatar set, so *proxying* will **still show the member avatar**. If you want to hide your avatar when proxying here, set a server avatar: `pk;member {await target.Reference(ctx)} serveravatar`");
         }
 
         if (ctx.Match("all") || newValueFromCommand != null)

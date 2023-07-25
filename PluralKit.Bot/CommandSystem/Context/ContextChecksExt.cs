@@ -5,6 +5,8 @@ using Myriad.Types;
 
 using PluralKit.Core;
 
+using Serilog.Sinks.PeriodicBatching;
+
 namespace PluralKit.Bot;
 
 public static class ContextChecksExt
@@ -67,6 +69,15 @@ public static class ContextChecksExt
         if (ctx.System != null)
             throw Errors.ExistingSystemError;
         return ctx;
+    }
+
+    public static async Task<bool> CheckTrusted(this Context ctx, SystemId? targetSystem = null, ulong? accountId = null)
+    {
+        return await ctx.Repository.GetTrustedRelation
+        (
+            targetSystem != null ? (SystemId)targetSystem : ctx.System.Id, 
+            accountId != null ? (ulong)accountId : ctx.Author.Id
+        );
     }
 
     public static async Task<Context> CheckAuthorPermission(this Context ctx, PermissionSet neededPerms,

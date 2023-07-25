@@ -115,14 +115,14 @@ public class Member
     {
         var system = await ctx.Repository.GetSystem(target.System);
         await ctx.Reply(
-            embed: await _embeds.CreateMemberEmbed(system, target, ctx.Guild, ctx.LookupContextFor(system.Id), ctx.Zone));
+            embed: await _embeds.CreateMemberEmbed(system, target, ctx.Guild, await ctx.LookupContextFor(system.Id), ctx.Zone));
     }
 
     public async Task Soulscream(Context ctx, PKMember target)
     {
         // this is for a meme, please don't take this code seriously. :)
 
-        var name = target.NameFor(ctx.LookupContextFor(target.System));
+        var name = target.NameFor(await ctx.LookupContextFor(target.System));
         var encoded = HttpUtility.UrlEncode(name);
 
         var resp = await _client.GetAsync($"https://onomancer.sibr.dev/api/generateStats2?name={encoded}");

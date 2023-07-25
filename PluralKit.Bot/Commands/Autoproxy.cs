@@ -130,7 +130,8 @@ public class Autoproxy
                     {
                         if (relevantMember == null)
                             throw new ArgumentException("Attempted to print member autoproxy status, but the linked member ID wasn't found in the database. Should be handled appropriately.");
-                        eb.Description($"Autoproxy is currently set to **front mode** in this server. The current (first) fronter is **{relevantMember.NameFor(ctx).EscapeMarkdown()}** (`{relevantMember.Hid}`). To disable, type `pk;autoproxy off`.");
+                        var nameFor = await relevantMember.NameFor(ctx);
+                        eb.Description($"Autoproxy is currently set to **front mode** in this server. The current (first) fronter is **{nameFor.EscapeMarkdown()}** (`{relevantMember.Hid}`). To disable, type `pk;autoproxy off`.");
                     }
 
                     break;

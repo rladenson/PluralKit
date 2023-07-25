@@ -528,12 +528,16 @@ public partial class CommandTree
             return ctx.Execute<Config>(null, m => m.MemberDefaultPrivacy(ctx));
         if (ctx.MatchMultiple(new[] { "private" }, new[] { "group" }) || ctx.Match("gp"))
             return ctx.Execute<Config>(null, m => m.GroupDefaultPrivacy(ctx));
-        if (ctx.MatchMultiple(new[] { "show" }, new[] { "private" }) || ctx.Match("sp"))
+        if (ctx.MatchMultiple(new[] { "show", "default" }, new[] { "private", "privacy" }) || ctx.Match("sp"))
             return ctx.Execute<Config>(null, m => m.ShowPrivateInfo(ctx));
         if (ctx.MatchMultiple(new[] { "proxy" }, new[] { "case" }))
             return ctx.Execute<Config>(null, m => m.CaseSensitiveProxyTags(ctx));
         if (ctx.MatchMultiple(new[] { "proxy" }, new[] { "error" }) || ctx.Match("pe"))
             return ctx.Execute<Config>(null, m => m.ProxyErrorMessageEnabled(ctx));
+        //should "auth" be an alias? Worried it will be confusing if authenticated-only becomes a thing
+        if (ctx.MatchMultiple(new[] { "trust", "trusted", "authorize", "authorized", "whitelist", "whitelisted" }, new[] { "user", "users" }) || ctx.Match("trust", "trusted", "tu", "authorize", "authorized", "whitelist", "whitelisted"))
+            return ctx.Execute<Config>(null, m => m.TrustedUsers(ctx));
+
 
         // todo: maybe add the list of configuration keys here?
         return ctx.Reply($"{Emojis.Error} Could not find a setting with that name. Please see `pk;commands config` for the list of possible config settings.");

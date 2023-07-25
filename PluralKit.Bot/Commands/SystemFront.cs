@@ -23,7 +23,7 @@ public class SystemFront
         var sw = await ctx.Repository.GetLatestSwitch(system.Id);
         if (sw == null) throw Errors.NoRegisteredSwitches;
 
-        await ctx.Reply(embed: await _embeds.CreateFronterEmbed(sw, ctx.Zone, ctx.LookupContextFor(system.Id)));
+        await ctx.Reply(embed: await _embeds.CreateFronterEmbed(sw, ctx.Zone, await ctx.LookupContextFor(system.Id)));
     }
 
     public async Task SystemFrontHistory(Context ctx, PKSystem system)
@@ -140,7 +140,7 @@ public class SystemFront
 
         var frontpercent = await ctx.Database.Execute(c => ctx.Repository.GetFrontBreakdown(c, system.Id, group?.Id, rangeStart.Value.ToInstant(), now));
         await ctx.Reply(embed: await _embeds.CreateFrontPercentEmbed(frontpercent, system, group, ctx.Zone,
-            ctx.LookupContextFor(system.Id), title.ToString(), ignoreNoFronters, showFlat));
+            await ctx.LookupContextFor(system.Id), title.ToString(), ignoreNoFronters, showFlat));
     }
 
     private async Task<PKSystem> GetGroupSystem(Context ctx, PKGroup target)
