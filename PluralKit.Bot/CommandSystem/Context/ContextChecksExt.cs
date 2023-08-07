@@ -69,6 +69,15 @@ public static class ContextChecksExt
         return ctx;
     }
 
+    public static async Task<bool> CheckTrusted(this Context ctx, SystemId? targetSystem = null, ulong? accountId = null)
+    {
+        return await ctx.Repository.GetTrustedRelation
+        (
+            targetSystem != null ? (SystemId)targetSystem : ctx.System.Id,
+            accountId != null ? (ulong)accountId : ctx.Author.Id
+        );
+    }
+
     public static async Task<Context> CheckAuthorPermission(this Context ctx, PermissionSet neededPerms,
                                                             string permissionName)
     {

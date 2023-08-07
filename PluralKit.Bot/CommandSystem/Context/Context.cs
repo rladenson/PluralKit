@@ -164,7 +164,7 @@ public class Context
         if (hasPublicOverride)
             return LookupContext.ByNonOwner;
 
-        return Config.ShowPrivateInfo
+        return Config.DefaultPrivacyShown == PrivacyLevel.Private
             ? LookupContext.ByOwner
             : LookupContext.ByNonOwner;
     }

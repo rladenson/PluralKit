@@ -11,6 +11,13 @@ using PluralKit.Core;
 namespace PluralKit.Bot;
 public class Config
 {
+    private readonly EmbedService _embeds;
+
+    public Config(EmbedService embeds)
+    {
+        _embeds = embeds;
+    }
+
     private record PaginatedConfigItem(string Key, string Description, string? CurrentValue, string DefaultValue);
 
     public async Task ShowConfig(Context ctx)
@@ -68,9 +75,9 @@ public class Config
         ));
 
         items.Add(new(
-            "show private",
-            "Whether private information is shown to linked accounts by default",
-            ctx.Config.ShowPrivateInfo.ToString().ToLower(),
+            "show privacy",
+            "What level of private information is shown to linked accounts by default",
+            ctx.Config.DefaultPrivacyShown.ToString().ToLower(),
             "true"
         ));
 
@@ -97,9 +104,16 @@ public class Config
 
         items.Add(new(
             "Proxy error",
-            "Whether to send an error message when proxying fails.",
+            "Whether to send an error message when proxying fails",
             EnabledDisabled(ctx.Config.ProxyErrorMessageEnabled),
             "enabled"
+        ));
+
+        items.Add(new(
+            "Trusted users",
+            "Discord accounts designated as trusted",
+            ctx.Config.TrustedUsers.Any() ? $"{ctx.Config.TrustedUsers.Count()}: query directly to see" : "none",
+            "none"
         ));
 
         await ctx.Paginate<PaginatedConfigItem>(
@@ -379,23 +393,73 @@ public class Config
     {
         if (!ctx.HasNext())
         {
-            if (ctx.Config.ShowPrivateInfo) await ctx.Reply("Private information is currently **shown** when looking up your own info. Use the `-public` flag to hide it.");
-            else await ctx.Reply("Private information is currently **hidden** when looking up your own info. Use the `-private` flag to show it.");
+            if (ctx.Config.DefaultPrivacyShown == PrivacyLevel.Private) await ctx.Reply("Private information is currently **shown** when looking up your own info. Use the `-public` flag to hide it or the `-trusted` flag to show only trusted info.");
+            else if (ctx.Config.DefaultPrivacyShown == PrivacyLevel.Trusted) await ctx.Reply("Trusted-only information is now **shown** when looking up your own info. Private information is **not shown**. Use the `-public` flag to show only public info or the `-private` info to show private information as well.");
+            else await ctx.Reply("Private and trusted information is currently **hidden** when looking up your own info. Use the `-private` flag to show private and trusted info or the `-trusted` flag to show only trusted info.");
             return;
         }
 
-        if (ctx.MatchToggle(true))
-        {
-            await ctx.Repository.UpdateSystemConfig(ctx.System.Id, new() { ShowPrivateInfo = true });
+        // This used to be true/false instead of a choice of any privacy enum value. Let people still use that wording if they want.
+        bool? legacyMatch = null;
 
-            await ctx.Reply("Private information will now be **shown** when looking up your own info. Use the `-public` flag to hide it.");
-        }
-        else
+        try
         {
-            await ctx.Repository.UpdateSystemConfig(ctx.System.Id, new() { ShowPrivateInfo = false });
-
-            await ctx.Reply("Private information will now be **hidden** when looking up your own info. Use the `-private` flag to show it.");
+            legacyMatch = ctx.MatchToggle(true);
         }
+        catch (PKError e)
+        { }
+
+        if (legacyMatch != null)
+        {
+            if (legacyMatch == true)
+            {
+                await ctx.Repository.UpdateSystemConfig(ctx.System.Id,
+                    new() { DefaultPrivacyShown = PrivacyLevel.Private });
+
+                await ctx.Reply(
+                    "Private information will now be **shown** when looking up your own info. Use the `-public` flag " +
+                    "to hide it or the `-trusted` flag to show only trusted information." +
+                    "\n{Emojis.Warn} This wording has been deprecated. In the future, please use the options `private`, `public`, or `trusted`.");
+            }
+            else
+            {
+                await ctx.Repository.UpdateSystemConfig(ctx.System.Id,
+                    new() { DefaultPrivacyShown = PrivacyLevel.Public });
+
+                await ctx.Reply(
+                    "Private information will now be **hidden** when looking up your own info. Use the `-private` flag" +
+                    " to show it or the `-trusted` flag to show trusted information." +
+                    "\n{Emojis.Warn} This wording has been deprecated. In the future, please use the options `private`, `public`, or `trusted`.");
+            }
+        }
+
+        if (ctx.Match("private", "priv"))
+        {
+            await ctx.Repository.UpdateSystemConfig(ctx.System.Id,
+                new() { DefaultPrivacyShown = PrivacyLevel.Private });
+
+            await ctx.Reply(
+                "Private information will now be **shown** when looking up your own info. Use the `-public` flag to hide it or the `-trusted` flag to show only trusted information.");
+        }
+        else if (ctx.Match("public", "pub"))
+        {
+            await ctx.Repository.UpdateSystemConfig(ctx.System.Id,
+                new() { DefaultPrivacyShown = PrivacyLevel.Public });
+
+            await ctx.Reply(
+                "Private information will now be **hidden** when looking up your own info. Use the `-private` flag to show it or the `-trusted` flag to show trusted information.");
+        }
+        else if (ctx.Match("trusted", "tru", "trust"))
+        {
+            await ctx.Repository.UpdateSystemConfig(ctx.System.Id,
+                new() { DefaultPrivacyShown = PrivacyLevel.Trusted });
+
+            await ctx.Reply(
+                "Private information will now be **hidden** when looking up your own info, but Trusted information will be **shown**. " +
+                "Use the `-private` flag to show private information or the `-public` flag to show only public information.");
+        }
+
+        throw new PKError("Valid privacy subjects are `private`, `public`, and `trusted`.");
     }
 
     public async Task CaseSensitiveProxyTags(Context ctx)
@@ -442,5 +506,28 @@ public class Config
 
             await ctx.Reply("Proxy error messages are now disabled. Messages that fail to proxy (due to message or attachment size) will not throw an error message.");
         }
+    }
+
+    public async Task TrustedUsers(Context ctx)
+    {
+
+        if (ctx.Match("add", "a", "authorize", "auth"))
+        {
+            var account = await ctx.MatchUser();
+            if (await ctx.CheckTrusted(null, account.Id))
+                throw Errors.AccountAlreadyTrusted;
+            await ctx.Repository.AddTrusted(ctx.System.Id, account.Id);
+            await ctx.Reply($"{Emojis.Success} Account is now trusted.");
+        }
+        else if (ctx.Match("remove", "rem", "r", "deauthorize", "unauthorize", "deauth", "unauth"))
+        {
+            var account = await ctx.MatchUser();
+            if (!await ctx.CheckTrusted(null, account.Id))
+                throw Errors.AccountNotTrusted;
+            await ctx.Repository.RemoveTrusted(ctx.System.Id, account.Id);
+            await ctx.Reply($"{Emojis.Success} Account is no longer trusted.");
+        }
+
+        await ctx.Reply(embed: await _embeds.CreateTrustedEmbed(ctx, ctx.Config.TrustedUsers));
     }
 }

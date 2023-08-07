@@ -13,7 +13,7 @@ public class SystemConfigPatch: PatchObject
     public Partial<int?> LatchTimeout { get; set; }
     public Partial<bool> MemberDefaultPrivate { get; set; }
     public Partial<bool> GroupDefaultPrivate { get; set; }
-    public Partial<bool> ShowPrivateInfo { get; set; }
+    public Partial<PrivacyLevel> DefaultPrivacyShown { get; set; }
     public Partial<int?> MemberLimitOverride { get; set; }
     public Partial<int?> GroupLimitOverride { get; set; }
     public Partial<string[]> DescriptionTemplates { get; set; }
@@ -27,7 +27,7 @@ public class SystemConfigPatch: PatchObject
         .With("latch_timeout", LatchTimeout)
         .With("member_default_private", MemberDefaultPrivate)
         .With("group_default_private", GroupDefaultPrivate)
-        .With("show_private_info", ShowPrivateInfo)
+        .With("show_private_info", DefaultPrivacyShown)
         .With("member_limit_override", MemberLimitOverride)
         .With("group_limit_override", GroupLimitOverride)
         .With("description_templates", DescriptionTemplates)
@@ -70,8 +70,8 @@ public class SystemConfigPatch: PatchObject
         if (GroupDefaultPrivate.IsPresent)
             o.Add("group_default_private", GroupDefaultPrivate.Value);
 
-        if (ShowPrivateInfo.IsPresent)
-            o.Add("show_private_info", ShowPrivateInfo.Value);
+        if (DefaultPrivacyShown.IsPresent)
+            o.Add("show_private_info", DefaultPrivacyShown.Value.ToJsonString());
 
         if (MemberLimitOverride.IsPresent)
             o.Add("member_limit", MemberLimitOverride.Value);
@@ -91,7 +91,7 @@ public class SystemConfigPatch: PatchObject
         return o;
     }
 
-    public static SystemConfigPatch FromJson(JObject o)
+    public static SystemConfigPatch FromJson(JObject o) //TODO?
     {
         var patch = new SystemConfigPatch();
 

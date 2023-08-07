@@ -522,4 +522,35 @@ public class EmbedService
 
         return Task.FromResult(eb.Build());
     }
+
+    public async Task<Embed> CreateTrustedEmbed(Context ctx, IEnumerable<ulong> userIds)
+    {
+        var color = ctx.System.Color;
+        uint? embedColor;
+        try
+        {
+            embedColor = color?.ToDiscordColor();
+        }
+        catch (ArgumentException)
+        {
+            embedColor = null;
+        }
+
+        var eb = new EmbedBuilder()
+            .Title("Trusted users for your system")
+            .Color(embedColor)
+            .Footer(new Embed.EmbedFooter($"Showing trusted users for the system {ctx.System.NameFor(LookupContext.ByOwner)}"));
+
+        if (userIds.Any())
+        {
+            var users = (await GetUsers(userIds)).Select(x => x.User?.NameAndMention() ?? $"(deleted account {x.Id})");
+            eb.Description(string.Join("\n", users).Truncate(4000));
+        }
+        else
+        {
+            eb.Description("*(none)*");
+        }
+
+        return eb.Build();
+    }
 }
