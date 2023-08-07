@@ -11,15 +11,15 @@ public class SystemList
     public async Task MemberList(Context ctx, PKSystem target)
     {
         if (target == null) throw Errors.NoSystemError;
-        ctx.CheckSystemPrivacy(target.Id, target.MemberListPrivacy);
+        await ctx.CheckSystemPrivacy(target.Id, target.MemberListPrivacy);
 
         // explanation of privacy lookup here:
         // - ParseListOptions checks list access privacy and sets the privacy filter (which members show up in list)
         // - RenderMemberList checks the indivual privacy for each member (NameFor, etc)
         // the own system is always allowed to look up their list
-        var opts = ctx.ParseListOptions(ctx.DirectLookupContextFor(target.Id));
+        var opts = ctx.ParseListOptions(await ctx.DirectLookupContextFor(target.Id));
         await ctx.RenderMemberList(
-            ctx.LookupContextFor(target.Id),
+            await ctx.LookupContextFor(target.Id),
             target.Id,
             await GetEmbedTitle(target, opts, ctx),
             target.Color,

@@ -101,6 +101,7 @@ public class Autoproxy
         var sw = await ctx.Repository.GetLatestSwitch(ctx.System.Id);
         var fronters = sw == null ? new() : await ctx.Database.Execute(c => ctx.Repository.GetSwitchMembers(c, sw.Id)).ToListAsync();
         var latchTimeout = ctx.Config.LatchTimeout.HasValue ? Duration.FromSeconds(ctx.Config.LatchTimeout.Value) : ProxyMatcher.DefaultLatchExpiryTime;
+        var pctx = await ctx.LookupContextFor(ctx.System.Id);
 
         var relevantMember = settings.AutoproxyMode switch
         {
@@ -130,7 +131,7 @@ public class Autoproxy
                     {
                         if (relevantMember == null)
                             throw new ArgumentException("Attempted to print member autoproxy status, but the linked member ID wasn't found in the database. Should be handled appropriately.");
-                        eb.Description($"Autoproxy is currently set to **front mode** in this server. The current (first) fronter is **{relevantMember.NameFor(ctx).EscapeMarkdown()}** (`{relevantMember.Hid}`). To disable, type `pk;autoproxy off`.");
+                        eb.Description($"Autoproxy is currently set to **front mode** in this server. The current (first) fronter is **{relevantMember.NameFor(pctx).EscapeMarkdown()}** (`{relevantMember.Hid}`). To disable, type `pk;autoproxy off`.");
                     }
 
                     break;

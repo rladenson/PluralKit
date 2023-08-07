@@ -41,7 +41,7 @@ public class Switch
             // Make sure the requested switch isn't identical to the last one
             if (await lastSwitchMembers.Select(m => m.Id)
                     .SequenceEqualAsync(members.Select(m => m.Id).ToAsyncEnumerable()))
-                throw Errors.SameSwitch(members, ctx.LookupContextFor(ctx.System.Id));
+                throw Errors.SameSwitch(members, await ctx.LookupContextFor(ctx.System.Id));
         }
 
         await ctx.Repository.AddSwitch(conn, ctx.System.Id, members.Select(m => m.Id).ToList());
@@ -132,7 +132,7 @@ public class Switch
         // Make sure switch isn't being edited to have the members it already does
         if (await lastSwitchMembers.Select(m => m.Id)
                 .SequenceEqualAsync(members.Select(m => m.Id).ToAsyncEnumerable()))
-            throw Errors.SameSwitch(members, ctx.LookupContextFor(ctx.System.Id));
+            throw Errors.SameSwitch(members, await ctx.LookupContextFor(ctx.System.Id));
 
         // Send a prompt asking the user to confirm the switch
         var lastSwitchDeltaStr = (SystemClock.Instance.GetCurrentInstant() - lastSwitch.Timestamp).FormatDuration();

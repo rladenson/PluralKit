@@ -28,7 +28,7 @@ public class SystemEdit
 
     public async Task Name(Context ctx, PKSystem target)
     {
-        ctx.CheckSystemPrivacy(target.Id, target.NamePrivacy);
+        await ctx.CheckSystemPrivacy(target.Id, target.NamePrivacy);
         var isOwnSystem = target.Id == ctx.System?.Id;
 
         var noNameSetMessage = $"{(isOwnSystem ? "Your" : "This")} system does not have a name set.";
@@ -133,7 +133,7 @@ public class SystemEdit
 
     public async Task Description(Context ctx, PKSystem target)
     {
-        ctx.CheckSystemPrivacy(target.Id, target.DescriptionPrivacy);
+        await ctx.CheckSystemPrivacy(target.Id, target.DescriptionPrivacy);
 
         var isOwnSystem = target.Id == ctx.System?.Id;
 
@@ -408,7 +408,7 @@ public class SystemEdit
 
     public async Task Pronouns(Context ctx, PKSystem target)
     {
-        ctx.CheckSystemPrivacy(target.Id, target.PronounPrivacy);
+        await ctx.CheckSystemPrivacy(target.Id, target.PronounPrivacy);
 
         var isOwnSystem = ctx.System.Id == target.Id;
 
@@ -602,7 +602,7 @@ public class SystemEdit
 
     public async Task BannerImage(Context ctx, PKSystem target)
     {
-        ctx.CheckSystemPrivacy(target.Id, target.DescriptionPrivacy);
+        await ctx.CheckSystemPrivacy(target.Id, target.DescriptionPrivacy);
 
         var isOwnSystem = target.Id == ctx.System?.Id;
 

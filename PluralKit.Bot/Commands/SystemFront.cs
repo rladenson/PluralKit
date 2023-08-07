@@ -18,18 +18,19 @@ public class SystemFront
     public async Task SystemFronter(Context ctx, PKSystem system)
     {
         if (system == null) throw Errors.NoSystemError;
-        ctx.CheckSystemPrivacy(system.Id, system.FrontPrivacy);
+        await ctx.CheckSystemPrivacy(system.Id, system.FrontPrivacy);
 
         var sw = await ctx.Repository.GetLatestSwitch(system.Id);
         if (sw == null) throw Errors.NoRegisteredSwitches;
 
-        await ctx.Reply(embed: await _embeds.CreateFronterEmbed(sw, ctx.Zone, ctx.LookupContextFor(system.Id)));
+        var pctx = await ctx.LookupContextFor(system.Id);
+        await ctx.Reply(embed: await _embeds.CreateFronterEmbed(sw, ctx.Zone, pctx));
     }
 
     public async Task SystemFrontHistory(Context ctx, PKSystem system)
     {
         if (system == null) throw Errors.NoSystemError;
-        ctx.CheckSystemPrivacy(system.Id, system.FrontHistoryPrivacy);
+        await ctx.CheckSystemPrivacy(system.Id, system.FrontHistoryPrivacy);
 
         var totalSwitches = await ctx.Repository.GetSwitchCount(system.Id);
         if (totalSwitches == 0) throw Errors.NoRegisteredSwitches;
@@ -105,7 +106,7 @@ public class SystemFront
         if (system == null && group == null) throw Errors.NoSystemError;
         if (system == null) system = await GetGroupSystem(ctx, group);
 
-        ctx.CheckSystemPrivacy(system.Id, system.FrontHistoryPrivacy);
+        await ctx.CheckSystemPrivacy(system.Id, system.FrontHistoryPrivacy);
 
         var totalSwitches = await ctx.Repository.GetSwitchCount(system.Id);
         if (totalSwitches == 0) throw Errors.NoRegisteredSwitches;
@@ -139,8 +140,9 @@ public class SystemFront
             title.Append($"`{system.Hid}`");
 
         var frontpercent = await ctx.Database.Execute(c => ctx.Repository.GetFrontBreakdown(c, system.Id, group?.Id, rangeStart.Value.ToInstant(), now));
+        var pctx = await ctx.LookupContextFor(system.Id);
         await ctx.Reply(embed: await _embeds.CreateFrontPercentEmbed(frontpercent, system, group, ctx.Zone,
-            ctx.LookupContextFor(system.Id), title.ToString(), ignoreNoFronters, showFlat));
+            pctx, title.ToString(), ignoreNoFronters, showFlat));
     }
 
     private async Task<PKSystem> GetGroupSystem(Context ctx, PKGroup target)

@@ -21,9 +21,9 @@ public static class ContextChecksExt
         throw new PKError("This command must be run in a DM.");
     }
 
-    public static Context CheckSystemPrivacy(this Context ctx, SystemId target, PrivacyLevel level)
+    public static async Task<Context> CheckSystemPrivacy(this Context ctx, SystemId target, PrivacyLevel level)
     {
-        if (level.CanAccess(ctx.DirectLookupContextFor(target))) return ctx;
+        if (level.CanAccess(await ctx.DirectLookupContextFor(target))) return ctx;
         throw Errors.LookupNotAllowed;
     }
 

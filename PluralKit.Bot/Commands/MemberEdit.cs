@@ -61,7 +61,7 @@ public class MemberEdit
 
     public async Task Description(Context ctx, PKMember target)
     {
-        ctx.CheckSystemPrivacy(target.System, target.DescriptionPrivacy);
+        await ctx.CheckSystemPrivacy(target.System, target.DescriptionPrivacy);
 
         var noDescriptionSetMessage = "This member does not have a description set.";
         if (ctx.System?.Id == target.System)
@@ -122,7 +122,7 @@ public class MemberEdit
         if (ctx.System?.Id == target.System)
             noPronounsSetMessage += $"To set some, type `pk;member {target.Reference(ctx)} pronouns <pronouns>`.";
 
-        ctx.CheckSystemPrivacy(target.System, target.PronounPrivacy);
+        await ctx.CheckSystemPrivacy(target.System, target.PronounPrivacy);
 
         if (ctx.MatchRaw())
         {
@@ -288,7 +288,7 @@ public class MemberEdit
         }
         else if (!ctx.HasNext())
         {
-            ctx.CheckSystemPrivacy(target.System, target.BirthdayPrivacy);
+            await ctx.CheckSystemPrivacy(target.System, target.BirthdayPrivacy);
 
             if (target.Birthday == null)
                 await ctx.Reply("This member does not have a birthdate set."
@@ -326,7 +326,7 @@ public class MemberEdit
 
     private async Task<EmbedBuilder> CreateMemberNameInfoEmbed(Context ctx, PKMember target)
     {
-        var lcx = ctx.LookupContextFor(target.System);
+        var lcx = await ctx.LookupContextFor(target.System);
 
         MemberGuildSettings memberGuildConfig = null;
         if (ctx.Guild != null)
@@ -342,7 +342,7 @@ public class MemberEdit
         var showDisplayName = target.NamePrivacy.CanAccess(lcx);
 
         eb.Field(new Embed.Field("Name", boldIf(
-            target.NameFor(ctx),
+            target.NameFor(lcx),
             (!showDisplayName || target.DisplayName == null) && memberGuildConfig?.DisplayName == null
         )));
 

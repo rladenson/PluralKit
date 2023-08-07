@@ -77,7 +77,7 @@ public class Groups
             EventData = dispatchData
         });
 
-        var reference = newGroup.Reference(ctx);
+        var reference = await newGroup.Reference(ctx);
 
         var eb = new EmbedBuilder()
             .Description(
@@ -123,10 +123,12 @@ public class Groups
 
     public async Task GroupDisplayName(Context ctx, PKGroup target)
     {
+        var reference = await target.Reference(ctx);
+
         var noDisplayNameSetMessage = "This group does not have a display name set.";
         if (ctx.System?.Id == target.System)
             noDisplayNameSetMessage +=
-                $" To set one, type `pk;group {target.Reference(ctx)} displayname <display name>`.";
+                $" To set one, type `pk;group {reference} displayname <display name>`.";
 
         // No perms check, display name isn't covered by member privacy
 
@@ -150,8 +152,6 @@ public class Groups
                 var eb = new EmbedBuilder()
                     .Field(new Embed.Field("Name", target.Name))
                     .Field(new Embed.Field("Display Name", target.DisplayName));
-
-                var reference = target.Reference(ctx);
 
                 if (ctx.System?.Id == target.System)
                     eb.Description(
@@ -192,12 +192,14 @@ public class Groups
 
     public async Task GroupDescription(Context ctx, PKGroup target)
     {
-        ctx.CheckSystemPrivacy(target.System, target.DescriptionPrivacy);
+        await ctx.CheckSystemPrivacy(target.System, target.DescriptionPrivacy);
+
+        var reference = await target.Reference(ctx);
 
         var noDescriptionSetMessage = "This group does not have a description set.";
         if (ctx.System?.Id == target.System)
             noDescriptionSetMessage +=
-                $" To set one, type `pk;group {target.Reference(ctx)} description <description>`.";
+                $" To set one, type `pk;group {reference} description <description>`.";
 
         if (ctx.MatchRaw())
         {
@@ -217,9 +219,9 @@ public class Groups
                     .Title("Group description")
                     .Description(target.Description)
                     .Field(new Embed.Field("\u200B",
-                        $"To print the description with formatting, type `pk;group {target.Reference(ctx)} description -raw`."
+                        $"To print the description with formatting, type `pk;group {reference} description -raw`."
                         + (ctx.System?.Id == target.System
-                            ? $" To clear it, type `pk;group {target.Reference(ctx)} description -clear`."
+                            ? $" To clear it, type `pk;group {reference} description -clear`."
                             : "")
                             + $" Using {target.Description.Length}/{Limits.MaxDescriptionLength} characters."))
                     .Build());
@@ -284,7 +286,8 @@ public class Groups
 
         async Task ShowIcon()
         {
-            ctx.CheckSystemPrivacy(target.System, target.IconPrivacy);
+            await ctx.CheckSystemPrivacy(target.System, target.IconPrivacy);
+            var reference = await target.Reference(ctx);
 
             if ((target.Icon?.Trim() ?? "").Length > 0)
             {
@@ -293,7 +296,7 @@ public class Groups
                     .Image(new Embed.EmbedImage(target.Icon.TryGetCleanCdnUrl()));
 
                 if (target.System == ctx.System?.Id)
-                    eb.Description($"To clear, use `pk;group {target.Reference(ctx)} icon -clear`.");
+                    eb.Description($"To clear, use `pk;group {reference} icon -clear`.");
 
                 await ctx.Reply(embed: eb.Build());
             }
@@ -348,7 +351,8 @@ public class Groups
 
         async Task ShowBannerImage()
         {
-            ctx.CheckSystemPrivacy(target.System, target.DescriptionPrivacy);
+            await ctx.CheckSystemPrivacy(target.System, target.DescriptionPrivacy);
+            var reference = await target.Reference(ctx);
 
             if ((target.BannerImage?.Trim() ?? "").Length > 0)
             {
@@ -357,7 +361,7 @@ public class Groups
                     .Image(new Embed.EmbedImage(target.BannerImage));
 
                 if (target.System == ctx.System?.Id)
-                    eb.Description($"To clear, use `pk;group {target.Reference(ctx)} banner clear`.");
+                    eb.Description($"To clear, use `pk;group {reference} banner clear`.");
 
                 await ctx.Reply(embed: eb.Build());
             }
@@ -381,12 +385,13 @@ public class Groups
         var isOwnSystem = ctx.System?.Id == target.System;
         var matchedRaw = ctx.MatchRaw();
         var matchedClear = ctx.MatchClear();
+        var reference = await target.Reference(ctx);
 
         if (!isOwnSystem || !(ctx.HasNext() || matchedClear))
         {
             if (target.Color == null)
                 await ctx.Reply(
-                    "This group does not have a color set." + (isOwnSystem ? $" To set one, type `pk;group {target.Reference(ctx)} color <color>`." : ""));
+                    "This group does not have a color set." + (isOwnSystem ? $" To set one, type `pk;group {reference} color <color>`." : ""));
             else if (matchedRaw)
                 await ctx.Reply("```\n#" + target.Color + "\n```");
             else
@@ -395,7 +400,7 @@ public class Groups
                     .Color(target.Color.ToDiscordColor())
                     .Thumbnail(new Embed.EmbedThumbnail($"https://fakeimg.pl/256x256/{target.Color}/?text=%20"))
                     .Description($"This group's color is **#{target.Color}**."
-                        + (isOwnSystem ? $" To clear it, type `pk;group {target.Reference(ctx)} color -clear`." : ""))
+                        + (isOwnSystem ? $" To clear it, type `pk;group {reference} color -clear`." : ""))
                     .Build());
             return;
         }
@@ -434,15 +439,18 @@ public class Groups
             system = ctx.System;
         }
 
-        ctx.CheckSystemPrivacy(system.Id, system.GroupListPrivacy);
+        await ctx.CheckSystemPrivacy(system.Id, system.GroupListPrivacy);
 
         // explanation of privacy lookup here:
         // - ParseListOptions checks list access privacy and sets the privacy filter (which members show up in list)
         // - RenderGroupList checks the indivual privacy for each member (NameFor, etc)
         // the own system is always allowed to look up their list
-        var opts = ctx.ParseListOptions(ctx.DirectLookupContextFor(system.Id));
+        var pctx = await ctx.DirectLookupContextFor(system.Id);
+        var lctx = await ctx.LookupContextFor(system.Id);
+        var opts = ctx.ParseListOptions(pctx);
         await ctx.RenderGroupList(
-            ctx.LookupContextFor(system.Id),
+            lctx,
+            pctx,
             system.Id,
             GetEmbedTitle(system, opts),
             system.Color,
@@ -474,6 +482,7 @@ public class Groups
     public async Task GroupPrivacy(Context ctx, PKGroup target, PrivacyLevel? newValueFromCommand)
     {
         ctx.CheckSystem().CheckOwnGroup(target);
+        var reference = await target.Reference(ctx);
         // Display privacy settings
         if (!ctx.HasNext() && newValueFromCommand == null)
         {
@@ -486,7 +495,7 @@ public class Groups
                 .Field(new Embed.Field("Metadata (creation date)", target.MetadataPrivacy.Explanation()))
                 .Field(new Embed.Field("Visibility", target.Visibility.Explanation()))
                 .Description(
-                    $"To edit privacy settings, use the command:\n> pk;group **{target.Reference(ctx)}** privacy **<subject>** **<level>**\n\n- `subject` is one of `name`, `description`, `icon`, `members`, `metadata`, `visibility`, or `all`\n- `level` is either `public` or `private`.")
+                    $"To edit privacy settings, use the command:\n> pk;group **{reference}** privacy **<subject>** **<level>**\n\n- `subject` is one of `name`, `description`, `icon`, `members`, `metadata`, `visibility`, or `all`\n- `level` is either `public` or `private`.")
                 .Build());
             return;
         }

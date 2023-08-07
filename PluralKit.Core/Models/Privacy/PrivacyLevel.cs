@@ -10,7 +10,9 @@ public enum PrivacyLevel
 public static class PrivacyLevelExt
 {
     public static bool CanAccess(this PrivacyLevel level, LookupContext ctx) =>
-        level == PrivacyLevel.Public || ctx == LookupContext.ByOwner;
+        level == PrivacyLevel.Public
+        || ctx == LookupContext.ByOwner
+        || (level == PrivacyLevel.Trusted && ctx == LookupContext.ByTrusted);
 
     public static string LevelName(this PrivacyLevel level) =>
         level switch

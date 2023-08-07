@@ -267,7 +267,8 @@ public class EmbedService
 
     public async Task<Embed> CreateGroupEmbed(Context ctx, PKSystem system, PKGroup target)
     {
-        var pctx = ctx.LookupContextFor(system.Id);
+        var pctx = await ctx.LookupContextFor(system.Id);
+        var reference = await target.Reference(ctx);
 
         var countctx = LookupContext.ByNonOwner;
         if (ctx.MatchFlag("a", "all"))
@@ -280,7 +281,7 @@ public class EmbedService
 
         var memberCount = await _repo.GetGroupMemberCount(target.Id, countctx == LookupContext.ByOwner ? null : PrivacyLevel.Public);
 
-        var nameField = target.NameFor(ctx);
+        var nameField = target.NameFor(pctx);
         var systemGuildSettings = ctx.Guild != null ? await _repo.GetSystemGuild(ctx.Guild.Id, system.Id) : null;
         if (systemGuildSettings != null && systemGuildSettings.DisplayName != null)
             nameField = $"{nameField} ({systemGuildSettings.DisplayName})";
@@ -319,11 +320,11 @@ public class EmbedService
             if (memberCount == 0 && pctx == LookupContext.ByOwner)
                 // Only suggest the add command if this is actually the owner lol
                 eb.Field(new Embed.Field("Members (0)",
-                    $"Add one with `pk;group {target.Reference(ctx)} add <member>`!"));
+                    $"Add one with `pk;group {reference} add <member>`!"));
             else
             {
                 var name = pctx == LookupContext.ByOwner
-                    ? target.Reference(ctx)
+                    ? reference
                     : target.Hid;
                 eb.Field(new Embed.Field($"Members ({memberCount})", $"(see `pk;group {name} list`)"));
             }

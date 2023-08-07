@@ -20,7 +20,7 @@ public class Random
         if (target == null)
             throw Errors.NoSystemError;
 
-        ctx.CheckSystemPrivacy(target.Id, target.MemberListPrivacy);
+        await ctx.CheckSystemPrivacy(target.Id, target.MemberListPrivacy);
 
         var members = await ctx.Repository.GetSystemMembers(target.Id).ToListAsync();
 
@@ -36,8 +36,8 @@ public class Random
                 "This system has no members!");
 
         var randInt = randGen.Next(members.Count);
-        await ctx.Reply(embed: await _embeds.CreateMemberEmbed(target, members[randInt], ctx.Guild,
-            ctx.LookupContextFor(target.Id), ctx.Zone));
+        var pctx = await ctx.LookupContextFor(target.Id);
+        await ctx.Reply(embed: await _embeds.CreateMemberEmbed(target, members[randInt], ctx.Guild, pctx, ctx.Zone));
     }
 
     public async Task Group(Context ctx, PKSystem target)
@@ -45,7 +45,7 @@ public class Random
         if (target == null)
             throw Errors.NoSystemError;
 
-        ctx.CheckSystemPrivacy(target.Id, target.GroupListPrivacy);
+        await ctx.CheckSystemPrivacy(target.Id, target.GroupListPrivacy);
 
         var groups = await ctx.Repository.GetSystemGroups(target.Id).ToListAsync();
         if (!ctx.MatchFlag("all", "a"))
@@ -65,9 +65,9 @@ public class Random
 
     public async Task GroupMember(Context ctx, PKGroup group)
     {
-        ctx.CheckSystemPrivacy(group.System, group.ListPrivacy);
+        await ctx.CheckSystemPrivacy(group.System, group.ListPrivacy);
 
-        var opts = ctx.ParseListOptions(ctx.DirectLookupContextFor(group.System));
+        var opts = ctx.ParseListOptions(await ctx.DirectLookupContextFor(group.System));
         opts.GroupFilter = group.Id;
 
         var members = await ctx.Database.Execute(conn => conn.QueryMemberList(group.System, opts.ToQueryOptions()));
@@ -92,7 +92,7 @@ public class Random
             system = await ctx.Repository.GetSystem(group.System);
 
         var randInt = randGen.Next(ms.Count);
-        await ctx.Reply(embed: await _embeds.CreateMemberEmbed(system, ms[randInt], ctx.Guild,
-            ctx.LookupContextFor(group.System), ctx.Zone));
+        var pctx = await ctx.LookupContextFor(group.System);
+        await ctx.Reply(embed: await _embeds.CreateMemberEmbed(system, ms[randInt], ctx.Guild, pctx, ctx.Zone));
     }
 }
