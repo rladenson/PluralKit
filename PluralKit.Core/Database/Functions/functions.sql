@@ -138,9 +138,18 @@ end
 $$ language plpgsql;
 
 create function generate_hid() returns char(6) as $$
-    select string_agg(substr('abcefghjknoprstuvwxyz', ceil(random() * 21)::integer, 1), '') from generate_series(1, 6)
-$$ language sql volatile;
-
+	declare new_hid char(6);
+  	begin
+    	loop
+			new_hid := (select string_agg(substr('abcefghjknoprstuvwxyz', ceil(random() * 21)::integer, 1), '') from generate_series(1, 6))::char(6);
+			if
+                --vv looks like w and nn looks like m so we loop until there's no double v or double n
+            	not new_hid like '%vv%' and not new_hid like '%nn%' 
+                then return new_hid;
+            end if;
+      	end loop;
+    end
+$$ language plpgsql volatile;
 
 create function find_free_system_hid() returns char(6) as $$
 declare new_hid char(6);
