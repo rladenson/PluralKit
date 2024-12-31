@@ -1,0 +1,24 @@
+name: Check for pk; String
+on:
+  push:
+    paths:
+    - 'Myriad/**'
+    - 'PluralKit.API/**'
+    - 'PluralKit.Bot/**'
+    - 'PluralKit.Core/**'
+  pull_request:
+    paths:
+    - 'Myriad/**'
+    - 'PluralKit.API/**'
+    - 'PluralKit.Bot/**'
+    - 'PluralKit.Core/**'
+
+jobs:
+  warning:
+    runs-on: ubuntu-latest
+    name: Check for pk;
+    steps:
+      - name: Please use {ctx.DefaultPrefix} instead of pk;
+        uses: IntToDouble/DNM@v1
+        with:
+          search_string: "pk;"
