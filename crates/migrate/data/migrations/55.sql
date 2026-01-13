@@ -1,3 +1,4 @@
+-- database version 55
 -- rename blacklist column to proxy blacklist
 
 alter table servers rename column blacklist to proxy_blacklist;
