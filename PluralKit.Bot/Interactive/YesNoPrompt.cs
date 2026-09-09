@@ -55,7 +55,7 @@ public class YesNoPrompt: BaseInteractive
         }
 
         Result = result;
-        await Finish(ctx);
+        await Finish(ctx, Message);
     }
 
     private bool MessagePredicate(MessageCreateEvent e)
@@ -130,7 +130,7 @@ public class YesNoPrompt: BaseInteractive
         }
         finally
         {
-            await Finish();
+            await Finish(content: Message);
             Cleanup();
         }
     }

@@ -222,6 +222,156 @@ public static class ContextUtils
         catch (ForbiddenException) { }
     }
 
+    public static async Task PaginateFancy<T>(this Context ctx, IAsyncEnumerable<T> items, int totalCount,
+        int itemsPerPage, string title, string color, Func<IEnumerable<T>, List<MessageComponent>> renderer)
+    {
+        // TODO: make this generic enough we can use it in Choose<T> below
+
+        var buffer = new List<T>();
+        await using var enumerator = items.GetAsyncEnumerator();
+
+        var pageCount = (int)Math.Ceiling(totalCount / (double)itemsPerPage);
+
+        async Task<MessageComponent[]> MakeComponentForPage(int page)
+        {
+            var bufferedItemsNeeded = (page + 1) * itemsPerPage;
+            while (buffer.Count < bufferedItemsNeeded && await enumerator.MoveNextAsync())
+                buffer.Add(enumerator.Current);
+
+            var titleField = new MessageComponent
+            {
+                Type = ComponentType.Text,
+                Content = "# " + (pageCount > 1 ? $"[{page + 1}/{pageCount}] {title}" : title),
+            };
+            return [titleField, .. renderer(buffer.Skip(page * itemsPerPage).Take(itemsPerPage))];
+        }
+
+        async Task<int> PromptPageNumber()
+        {
+            var timeout = Duration.FromMinutes(0.5);
+
+            // check if http gateway and set listener
+            if (ctx.Cache is HttpDiscordCache)
+                await (ctx.Cache as HttpDiscordCache).AwaitMessage(ctx.Guild?.Id ?? 0, ctx.Channel.Id, ctx.Author.Id, timeout);
+
+            bool Predicate(MessageCreateEvent e) =>
+                e.Author.Id == ctx.Author.Id && e.ChannelId == ctx.Channel.Id;
+
+            var msg = await ctx.Services.Resolve<HandlerQueue<MessageCreateEvent>>()
+                .WaitFor(Predicate, timeout);
+
+            int.TryParse(msg.Content, out var num);
+
+            return num;
+        }
+
+        var list = new ListInteractive(ctx)
+        {
+            ContentBuilder = MakeComponentForPage,
+            Color = color,
+            PageCount = pageCount,
+        };
+
+        await list.Run(false);
+
+        // try
+        // {
+        //     var msg = await ctx.Reply(components: [await MakeComponentForPage(0)]);
+
+        //     // If we only have one (or no) page, don't bother with the reaction/pagination logic, lol
+        //     if (pageCount <= 1) return;
+
+        //     string[] botEmojis = { "\u23EA", "\u2B05", "\u27A1", "\u23E9", "\uD83D\uDD22", Emojis.Error };
+
+        //     var _ = ctx.Rest.CreateReactionsBulk(msg, botEmojis); // Again, "fork"
+
+        //     try
+        //     {
+        //         var currentPage = 0;
+        //         while (true)
+        //         {
+        //             var reaction = await ctx.AwaitReaction(msg, ctx.Author, timeout: Duration.FromMinutes(5));
+
+        //             // Increment/decrement page counter based on which reaction was clicked
+        //             if (reaction.Emoji.Name == "\u23EA") currentPage = 0; // <<
+        //             else if (reaction.Emoji.Name == "\u2B05") currentPage = (currentPage - 1) % pageCount; // <
+        //             else if (reaction.Emoji.Name == "\u27A1") currentPage = (currentPage + 1) % pageCount; // >
+        //             else if (reaction.Emoji.Name == "\u23E9") currentPage = pageCount - 1; // >>
+        //             else if (reaction.Emoji.Name == Emojis.Error) break; // X
+
+        //             else if (reaction.Emoji.Name == "\u0031\uFE0F\u20E3") currentPage = 0;
+        //             else if (reaction.Emoji.Name == "\u0032\uFE0F\u20E3") currentPage = 1;
+        //             else if (reaction.Emoji.Name == "\u0033\uFE0F\u20E3") currentPage = 2;
+        //             else if (reaction.Emoji.Name == "\u0034\uFE0F\u20E3" && pageCount >= 3) currentPage = 3;
+        //             else if (reaction.Emoji.Name == "\u0035\uFE0F\u20E3" && pageCount >= 4) currentPage = 4;
+        //             else if (reaction.Emoji.Name == "\u0036\uFE0F\u20E3" && pageCount >= 5) currentPage = 5;
+        //             else if (reaction.Emoji.Name == "\u0037\uFE0F\u20E3" && pageCount >= 6) currentPage = 6;
+        //             else if (reaction.Emoji.Name == "\u0038\uFE0F\u20E3" && pageCount >= 7) currentPage = 7;
+        //             else if (reaction.Emoji.Name == "\u0039\uFE0F\u20E3" && pageCount >= 8) currentPage = 8;
+        //             else if (reaction.Emoji.Name == "\U0001f51f" && pageCount >= 9) currentPage = 9;
+
+        //             else if (reaction.Emoji.Name == "\uD83D\uDD22")
+        //                 try
+        //                 {
+        //                     await ctx.Reply("What page would you like to go to?");
+        //                     var repliedNum = await PromptPageNumber();
+        //                     if (repliedNum < 1)
+        //                     {
+        //                         await ctx.Reply($"{Emojis.Error} Operation canceled (invalid number).");
+        //                         continue;
+        //                     }
+
+        //                     if (repliedNum > pageCount)
+        //                     {
+        //                         await ctx.Reply(
+        //                             $"{Emojis.Error} That page number is too high (page count is {pageCount}).");
+        //                         continue;
+        //                     }
+
+        //                     currentPage = repliedNum - 1;
+        //                 }
+        //                 catch (TimeoutException)
+        //                 {
+        //                     await ctx.Reply($"{Emojis.Error} Operation timed out, sorry. Try again, perhaps?");
+        //                     continue;
+        //                 }
+
+        //             // C#'s % operator is dumb and wrong, so we fix negative numbers
+        //             if (currentPage < 0) currentPage += pageCount;
+
+        //             // If we can, remove the user's reaction (so they can press again quickly)
+        //             if ((await ctx.BotPermissions).HasFlag(PermissionSet.ManageMessages))
+        //                 try
+        //                 {
+        //                     await ctx.Rest.DeleteUserReaction(msg.ChannelId, msg.Id, reaction.Emoji, reaction.UserId);
+        //                 }
+        //                 catch (TooManyRequestsException)
+        //                 {
+        //                     continue;
+        //                 }
+
+        //             // Edit the embed with the new page
+        //             var component = await MakeComponentForPage(currentPage);
+        //             await ctx.Rest.EditMessage(msg.ChannelId, msg.Id, new MessageEditRequest { Components = new[] { component } });
+        //         }
+        //     }
+        //     catch (TimeoutException)
+        //     {
+        //         // "escape hatch", clean up as if we hit X
+        //     }
+
+        //     // todo: re-check
+        //     if ((await ctx.BotPermissions).HasFlag(PermissionSet.ManageMessages))
+        //         await ctx.Rest.DeleteAllReactions(msg.ChannelId, msg.Id);
+        // }
+        // // If we get a "NotFound" error, the message has been deleted and thus not our problem
+        // catch (NotFoundException) { }
+        // // If we get an "Unauthorized" error, we don't have permissions to remove our reaction
+        // // which means we probably didn't add it in the first place, or permissions changed since then
+        // // either way, nothing to do here
+        // catch (ForbiddenException) { }
+    }
+
     public static async Task<T> Choose<T>(this Context ctx, string description, IList<T> items,
                                           Func<T, string> display = null)
     {
