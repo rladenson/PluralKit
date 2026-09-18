@@ -12,7 +12,7 @@ namespace PluralKit.Bot;
 public class InteractionContext: JointContext
 {
 
-    public InteractionContext(ILifetimeScope provider, InteractionCreateEvent evt, PKSystem system, SystemConfig config) : base(provider, system, config, ["/"])
+    public InteractionContext(ILifetimeScope provider, InteractionCreateEvent evt, PKSystem system, SystemConfig config) : base(provider, system, config, ["/"], evt.Guild)
     {
         Event = evt;
         Member = Event.Member;
@@ -21,7 +21,6 @@ public class InteractionContext: JointContext
 
     public InteractionCreateEvent Event { get; }
 
-    public ulong GuildId => Event.GuildId;
     public ulong ChannelId => Event.ChannelId;
     public ulong? MessageId => Event.Message?.Id;
     public string Token => Event.Token;
@@ -118,4 +117,6 @@ public class InteractionContext: JointContext
         await Rest.CreateInteractionResponse(Event.Id, Event.Token,
             new InteractionResponse { Type = type, Data = data });
     }
+
+    public override LookupContext LookupContextFor(SystemId systemId) => DirectLookupContextFor(systemId);
 }
