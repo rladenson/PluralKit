@@ -17,6 +17,7 @@
           imports = [ inputs.services.processComposeModules.default ];
 
           settings.log_location = "${dataDir}/log";
+          cli.options.keep-project = true;
 
           settings.environment = {
             DOTNET_CLI_TELEMETRY_OPTOUT = "1";
