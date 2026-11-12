@@ -13,5 +13,6 @@ public class ListedMember: PKMember
             ? new AnnualDate(Birthday.Value.Month, Birthday.Value.Day)
             : null;
 
-    public int? Order { get; set; }
+    public IEnumerable<PKGroup> Groups { get; set; } = [];
+    public ICollection<int>? GroupIds { get; private set; }
 }

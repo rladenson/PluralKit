@@ -3,6 +3,7 @@ using Humanizer;
 
 using Myriad.Builders;
 using Myriad.Types;
+using static Myriad.Types.MessageComponent;
 
 using PluralKit.Core;
 
@@ -10,9 +11,9 @@ namespace PluralKit.Bot;
 
 public static class ContextListExt
 {
-    public static ListOptions ParseListOptions(this Context ctx, LookupContext directLookupCtx, LookupContext lookupContext)
+    public static ListOptions ParseListOptions(this Context ctx, LookupContext directLookupCtx, LookupContext lookupContext, ListEntity entityType)
     {
-        var p = new ListOptions();
+        var p = new ListOptions(entityType);
 
         // Short or long list? (parse this first, as it can potentially take a positional argument)
         var isFull = ctx.Match("f", "full", "big", "details", "long") || ctx.MatchFlag("f", "full");
@@ -34,16 +35,16 @@ public static class ContextListExt
             p.SearchDescription = true;
 
         // Sort property (default is by name, but adding a flag anyway, 'cause why not)
-        if (ctx.MatchFlag("by-name", "bn")) p.SortProperty = SortProperty.Name;
-        if (ctx.MatchFlag("by-display-name", "bdn")) p.SortProperty = SortProperty.DisplayName;
-        if (ctx.MatchFlag("by-id", "bid")) p.SortProperty = SortProperty.Hid;
-        if (ctx.MatchFlag("by-message-count", "bmc")) p.SortProperty = SortProperty.MessageCount;
-        if (ctx.MatchFlag("by-created", "bc", "bcd")) p.SortProperty = SortProperty.CreationDate;
+        if (ctx.MatchFlag("by-name", "bn")) p.SortProperty = ListEntityField.Name;
+        if (ctx.MatchFlag("by-display-name", "bdn")) p.SortProperty = ListEntityField.DisplayName;
+        if (ctx.MatchFlag("by-id", "bid")) p.SortProperty = ListEntityField.Hid;
+        if (ctx.MatchFlag("by-message-count", "bmc")) p.SortProperty = ListEntityField.MessageCount;
+        if (ctx.MatchFlag("by-created", "bc", "bcd")) p.SortProperty = ListEntityField.CreationDate;
         if (ctx.MatchFlag("by-last-fronted", "by-last-front", "by-last-switch", "blf", "bls"))
-            p.SortProperty = SortProperty.LastSwitch;
-        if (ctx.MatchFlag("by-last-message", "blm", "blp")) p.SortProperty = SortProperty.LastMessage;
-        if (ctx.MatchFlag("by-birthday", "by-birthdate", "bbd")) p.SortProperty = SortProperty.Birthdate;
-        if (ctx.MatchFlag("random", "rand")) p.SortProperty = SortProperty.Random;
+            p.SortProperty = ListEntityField.LastSwitch;
+        if (ctx.MatchFlag("by-last-message", "blm", "blp")) p.SortProperty = ListEntityField.LastMessage;
+        if (ctx.MatchFlag("by-birthday", "by-birthdate", "bbd")) p.SortProperty = ListEntityField.Birthdate;
+        if (ctx.MatchFlag("random", "rand")) p.SortProperty = SortOption.Random;
 
         // Sort reverse?
         if (ctx.MatchFlag("r", "rev", "reverse"))
@@ -63,31 +64,31 @@ public static class ContextListExt
 
         // Additional fields to include in the search results
         if (ctx.MatchFlag("with-last-switch", "with-last-fronted", "with-last-front", "wls", "wlf"))
-            p.IncludeValues[EntityField.LastSwitch] = true;
+            p.IncludedFields[ListEntityField.LastSwitch] = true;
         if (ctx.MatchFlag("with-last-message", "with-last-proxy", "wlm", "wlp"))
-            p.IncludeValues[EntityField.LastMessage] = true;
+            p.IncludedFields[ListEntityField.LastMessage] = true;
         if (ctx.MatchFlag("with-message-count", "wmc"))
-            p.IncludeValues[EntityField.MessageCount] = true;
+            p.IncludedFields[ListEntityField.MessageCount] = true;
         if (ctx.MatchFlag("with-created", "wc"))
-            p.IncludeValues[EntityField.CreationDate] = true;
+            p.IncludedFields[ListEntityField.CreationDate] = true;
         if (ctx.MatchFlag("with-avatar", "with-image", "with-icon", "wa", "wi", "ia", "ii", "img"))
-            p.IncludeValues[EntityField.Avatar] = true;
+            p.IncludedFields[ListEntityField.Avatar] = true;
         if (ctx.MatchFlag("with-pronouns", "wp", "wprns"))
-            p.IncludeValues[EntityField.Pronouns] = true;
+            p.IncludedFields[ListEntityField.Pronouns] = true;
         if (ctx.MatchFlag("with-displayname", "wdn"))
-            p.IncludeValues[EntityField.DisplayName] = true;
+            p.IncludedFields[ListEntityField.DisplayName] = true;
         if (ctx.MatchFlag("with-birthday", "wbd", "wb"))
-            p.IncludeValues[EntityField.Birthdate] = true;
+            p.IncludedFields[ListEntityField.Birthdate] = true;
 
         // Always show the sort property, too (unless this is the short list and we are already showing something else)
         if (p.Type != ListType.Short || p.IncludedCount == 0)
         {
-            if (p.SortProperty == SortProperty.DisplayName) p.IncludeValues[EntityField.DisplayName] = true;
-            if (p.SortProperty == SortProperty.MessageCount) p.IncludeValues[EntityField.MessageCount] = true;
-            if (p.SortProperty == SortProperty.CreationDate) p.IncludeValues[EntityField.CreationDate] = true;
-            if (p.SortProperty == SortProperty.LastSwitch) p.IncludeValues[EntityField.LastSwitch] = true;
-            if (p.SortProperty == SortProperty.LastMessage) p.IncludeValues[EntityField.LastMessage] = true;
-            if (p.SortProperty == SortProperty.Birthdate) p.IncludeValues[EntityField.Birthdate] = true;
+            if (p.SortProperty == ListEntityField.DisplayName) p.IncludedFields[ListEntityField.DisplayName] = true;
+            if (p.SortProperty == ListEntityField.MessageCount) p.IncludedFields[ListEntityField.MessageCount] = true;
+            if (p.SortProperty == ListEntityField.CreationDate) p.IncludedFields[ListEntityField.CreationDate] = true;
+            if (p.SortProperty == ListEntityField.LastSwitch) p.IncludedFields[ListEntityField.LastSwitch] = true;
+            if (p.SortProperty == ListEntityField.LastMessage) p.IncludedFields[ListEntityField.LastMessage] = true;
+            if (p.SortProperty == ListEntityField.Birthdate) p.IncludedFields[ListEntityField.Birthdate] = true;
             // If this is a short list and we went from 0 -> 1 included count here then we made the sort and includes match
             if (p.Type == ListType.Short && p.IncludedCount == 1) p.SortIncludeMatch = true;
         }
@@ -104,24 +105,24 @@ public static class ContextListExt
     {
         // We take an IDatabase instead of a IPKConnection so we don't keep the handle open for the entire runtime
         // We wanna release it as soon as the member list is actually *fetched*, instead of potentially minutes later (paginate timeout)
-        var members = (await ctx.Database.Execute(conn => conn.QueryMemberList(system, opts.ToQueryOptions())))
+        var members = (await ctx.Database.Execute(conn => conn.QueryMemberList(system, opts.ToQueryOptions(), opts.Type == ListType.Long)))
             .SortByMemberListOptions(opts, lookupCtx)
             .ToList();
 
         // Make the defaults match the behavior of the non-cv2 list
         if (opts.IncludedCount == 0 || opts.Type == ListType.Long)
-            opts.IncludeValues[EntityField.ProxyTags] = true;
+            opts.IncludedFields[ListEntityField.ProxyTags] = true;
         if (opts.Type == ListType.Long)
         {
-            opts.IncludeValues[EntityField.DisplayName] = true;
-            opts.IncludeValues[EntityField.Pronouns] = true;
-            opts.IncludeValues[EntityField.Birthdate] = true;
-            opts.IncludeValues[EntityField.Description] = true;
+            opts.IncludedFields[ListEntityField.DisplayName] = true;
+            opts.IncludedFields[ListEntityField.Pronouns] = true;
+            opts.IncludedFields[ListEntityField.Birthdate] = true;
+            opts.IncludedFields[ListEntityField.Description] = true;
         }
 
         var footer = $"-# {opts.CreateFilterString()} {"result".ToQuantity(members.Count)}.";
 
-        var itemsPerPage = opts.Type == ListType.Short ? 25 : 5;
+        var itemsPerPage = opts.Type == ListType.Short ? 25 : 25;
         await ctx.PaginateCV2(title, color, Renderer, itemsPerPage, opts.Type == ListType.Short ? shortOptionsModal : longOptionsModal);
 
         // Base renderer, dispatches based on type
@@ -132,8 +133,10 @@ public static class ContextListExt
                 opts.ResetDynamicOptions();
 
                 var sortComponent = optsOverride.Components.First((x) => x.Component.CustomId == "sort_select").Component;
-                if (Enum.TryParse<SortProperty>(sortComponent.Values[0], out var sortResult))
+                if (Enum.TryParse<ListEntityField>(sortComponent.Values[0], out var sortResult))
                     opts.SortProperty = sortResult;
+                else if (sortComponent.Values[0] == SortOption.Random.ToString())
+                    opts.SortProperty = SortOption.Random;
 
                 var infoComponent = optsOverride.Components.First((x) => x.Component.CustomId == "info_select").Component;
                 if (infoComponent?.Values?.Length > 0 && infoComponent.Values[0] == "default")
@@ -142,8 +145,8 @@ public static class ContextListExt
                     opts.SortIncludeMatch = true;
                 }
                 foreach (var include in infoComponent.Values)
-                    if (Enum.TryParse<EntityField>(include, out var infoResult) && opts.IncludeValues.ContainsKey(infoResult))
-                        opts.IncludeValues[infoResult] = true;
+                    if (Enum.TryParse<ListEntityField>(include, out var infoResult))
+                        opts.IncludedFields[infoResult] = true;
 
                 var extraCheckboxesComponent = optsOverride.Components.FirstOrDefault((x) => x.Component.CustomId == "extra_checkboxes")?.Component;
                 opts.ShowIds = extraCheckboxesComponent?.Values.FirstOrDefault(x => x == "id") != null;
@@ -152,12 +155,12 @@ public static class ContextListExt
 
                 var withFilterComponent = optsOverride.Components.FirstOrDefault(x => x.Component.CustomId == "filter_with")?.Component;
                 foreach (var withFilterEntryStr in withFilterComponent?.Values ?? [])
-                    if (Enum.TryParse<EntityField>(withFilterEntryStr, out var withFilterEntry) && opts.WithFilter.ContainsKey(withFilterEntry))
+                    if (Enum.TryParse<ListEntityField>(withFilterEntryStr, out var withFilterEntry) && opts.WithFilter.ContainsKey(withFilterEntry))
                         opts.WithFilter[withFilterEntry] = true;
 
                 var withOutFilterComponent = optsOverride.Components.FirstOrDefault(x => x.Component.CustomId == "filter_without")?.Component;
                 foreach (var withOutFilterEntryStr in withOutFilterComponent?.Values ?? [])
-                    if (Enum.TryParse<EntityField>(withOutFilterEntryStr, out var withOutFilterEntry) && opts.WithOutFilter.ContainsKey(withOutFilterEntry))
+                    if (Enum.TryParse<ListEntityField>(withOutFilterEntryStr, out var withOutFilterEntry) && opts.WithOutFilter.ContainsKey(withOutFilterEntry))
                         opts.WithOutFilter[withOutFilterEntry] = true;
 
                 opts.AssertIsValid();
@@ -180,32 +183,32 @@ public static class ContextListExt
             // if there are both 5 and 6 character Hids they should be padded to align correctly.
             var shouldPad = members.Any(x => x.Hid.Length > 5);
 
-            return members.Select(m =>
+            return members.Select((m, i) =>
                 {
                     var ret = "";
                     if (opts.NumberItems)
-                        ret += $"{m.Order}. ";
+                        ret += $"{i + 1}. ";
                     if (opts.ShowIds)
                         ret += $"[`{m.DisplayHid(ctx.Config, isList: true, shouldPad: shouldPad)}`] ";
                     ret += $"**{m.NameFor(ctx)}** ";
 
-                    if (opts.IncludeValues[EntityField.MessageCount] && m.MessageCountFor(lookupCtx) is { } count)
+                    if (opts.IncludedFields[ListEntityField.MessageCount] && m.MessageCountFor(lookupCtx) is { } count)
                         ret += $"({count} messages)";
-                    else if (opts.IncludeValues[EntityField.LastSwitch] && m.MetadataPrivacy.TryGet(lookupCtx, m.LastSwitchTime, out var lastSw))
+                    else if (opts.IncludedFields[ListEntityField.LastSwitch] && m.MetadataPrivacy.TryGet(lookupCtx, m.LastSwitchTime, out var lastSw))
                         ret += $"(last switched in: <t:{lastSw.Value.ToUnixTimeSeconds()}>)";
-                    else if (opts.IncludeValues[EntityField.LastMessage] && m.MetadataPrivacy.TryGet(lookupCtx, m.LastMessageTimestamp, out var lastMsg))
+                    else if (opts.IncludedFields[ListEntityField.LastMessage] && m.MetadataPrivacy.TryGet(lookupCtx, m.LastMessageTimestamp, out var lastMsg))
                         ret += $"(last message: <t:{m.LastMessageTimestamp.Value.ToUnixTimeSeconds()}>)";
-                    else if (opts.IncludeValues[EntityField.CreationDate] && m.MetadataPrivacy.TryGet(lookupCtx, m.Created, out var created))
+                    else if (opts.IncludedFields[ListEntityField.CreationDate] && m.MetadataPrivacy.TryGet(lookupCtx, m.Created, out var created))
                         ret += $"(created at <t:{created.ToUnixTimeSeconds()}>)";
-                    else if (opts.IncludeValues[EntityField.Avatar] && m.AvatarFor(lookupCtx) is { } avatarUrl)
+                    else if (opts.IncludedFields[ListEntityField.Avatar] && m.AvatarFor(lookupCtx) is { } avatarUrl)
                         ret += $"([avatar URL]({avatarUrl}))";
-                    else if (opts.IncludeValues[EntityField.Pronouns] && m.PronounsFor(lookupCtx) is { } pronouns)
+                    else if (opts.IncludedFields[ListEntityField.Pronouns] && m.PronounsFor(lookupCtx) is { } pronouns)
                         ret += $"({pronouns})";
-                    else if (opts.IncludeValues[EntityField.DisplayName] && m.DisplayName != null && m.NamePrivacy.CanAccess(lookupCtx))
+                    else if (opts.IncludedFields[ListEntityField.DisplayName] && m.DisplayName != null && m.NamePrivacy.CanAccess(lookupCtx))
                         ret += $"({m.DisplayName})";
-                    else if (opts.IncludeValues[EntityField.Birthdate] && m.BirthdayFor(lookupCtx) is { } birthday)
+                    else if (opts.IncludedFields[ListEntityField.Birthdate] && m.BirthdayFor(lookupCtx) is { } birthday)
                         ret += $"(birthday: {m.BirthdayString})";
-                    else if (opts.IncludeValues[EntityField.ProxyTags] && m.HasProxyTags && m.ProxyPrivacy.CanAccess(lookupCtx))
+                    else if (opts.IncludedFields[ListEntityField.ProxyTags] && m.HasProxyTags && m.ProxyPrivacy.CanAccess(lookupCtx))
                     {
                         var proxyTagsString = m.ProxyTagsString();
                         if (proxyTagsString.Length > 100) // arbitrary threshold for now, tweak?
@@ -222,7 +225,7 @@ public static class ContextListExt
             List<ContextUtils.PageItem> components = [];
             foreach (var m in page)
             {
-                var container = embeds.CreateMemberMessageComponents(null, m, null, ctx.Config, lookupCtx, null, opts, true);
+                var container = embeds.CreateMemberMessageComponents(null, m, null, ctx.Config, lookupCtx, m.Groups.ToList(), opts, true);
                 components.Add(new()
                 {
                     CharacterCount = countCharacters(container),
@@ -247,57 +250,16 @@ public static class ContextListExt
                         new()
                         {
                             Label = "Name (Default)",
-                            Value = SortProperty.Name.ToString(),
-                            Default = opts.SortProperty == SortProperty.Name
+                            Value = ListEntityField.Name.ToString(),
+                            Default = opts.SortProperty == ListEntityField.Name
                         },
-                        new()
-                        {
-                            Label = "Displayname",
-                            Value = SortProperty.DisplayName.ToString(),
-                            Default = opts.SortProperty == SortProperty.DisplayName
-                        },
-                        new()
-                        {
-                            Label = "ID",
-                            Value = SortProperty.Hid.ToString(),
-                            Default = opts.SortProperty == SortProperty.Hid
-                        },
-                        new()
-                        {
-                            Label = "Message Count",
-                            Value = SortProperty.MessageCount.ToString(),
-                            Default = opts.SortProperty == SortProperty.MessageCount
-                        },
-                        new()
-                        {
-                            Label = "Creation Date",
-                            Value = SortProperty.CreationDate.ToString(),
-                            Default = opts.SortProperty == SortProperty.CreationDate
-                        },
-                        new()
-                        {
-                            Label = "Last Switch",
-                            Value = SortProperty.LastSwitch.ToString(),
-                            Default = opts.SortProperty == SortProperty.LastSwitch
-                        },
-                        new()
-                        {
-                            Label = "Last Message",
-                            Value = SortProperty.LastMessage.ToString(),
-                            Default = opts.SortProperty == SortProperty.LastMessage
-                        },
-                        new()
-                        {
-                            Label = "Birthday",
-                            Value = SortProperty.Birthdate.ToString(),
-                            Default = opts.SortProperty == SortProperty.Birthdate
-                        },
-                        new()
-                        {
-                            Label = "Random",
-                            Value = SortProperty.Random.ToString(),
-                            Default = opts.SortProperty == SortProperty.Random
-                        },
+                        .. opts.SortOptions.Where(x => x != ListEntityField.Name).Select(x =>
+                            new MessageComponentOption()
+                            {
+                                Label = x.ToLabel(),
+                                Value = x.ToString(),
+                                Default = opts.SortProperty == x
+                            }),
                     ]
                 }
             },
@@ -317,60 +279,14 @@ public static class ContextListExt
                             Value = "default",
                             Default = opts.SortIncludeMatch
                         },
-                        new()
+                        .. opts.IncludedFields.AsEnumerable().Select(field =>
+                        new MessageComponentOption()
                         {
-                            Label = "Proxy Tags",
-                            Value = EntityField.ProxyTags.ToString(),
-                            Default = !opts.SortIncludeMatch && opts.IncludeValues[EntityField.ProxyTags]
-                        },
-                        new()
-                        {
-                            Label = "Last Switch",
-                            Value = EntityField.LastSwitch.ToString(),
-                            Default = !opts.SortIncludeMatch && opts.IncludeValues[EntityField.LastSwitch]
-                        },
-                        new()
-                        {
-                            Label = "Last Message",
-                            Value = EntityField.LastMessage.ToString(),
-                            Default = !opts.SortIncludeMatch && opts.IncludeValues[EntityField.LastMessage]
-                        },
-                        new()
-                        {
-                            Label = "Message Count",
-                            Value = EntityField.MessageCount.ToString(),
-                            Default = !opts.SortIncludeMatch && opts.IncludeValues[EntityField.MessageCount]
-                        },
-                        new()
-                        {
-                            Label = "Creation Date",
-                            Value = EntityField.CreationDate.ToString(),
-                            Default = !opts.SortIncludeMatch && opts.IncludeValues[EntityField.CreationDate]
-                        },
-                        new()
-                        {
-                            Label = "Avatar Link",
-                            Value = EntityField.Avatar.ToString(),
-                            Default = !opts.SortIncludeMatch && opts.IncludeValues[EntityField.Avatar]
-                        },
-                        new()
-                        {
-                            Label = "Pronouns",
-                            Value = EntityField.Pronouns.ToString(),
-                            Default = !opts.SortIncludeMatch && opts.IncludeValues[EntityField.Pronouns]
-                        },
-                        new()
-                        {
-                            Label = "Displayname",
-                            Value = EntityField.DisplayName.ToString(),
-                            Default = !opts.SortIncludeMatch && opts.IncludeValues[EntityField.DisplayName]
-                        },
-                        new()
-                        {
-                            Label = "Birthday",
-                            Value = EntityField.Birthdate.ToString(),
-                            Default = !opts.SortIncludeMatch && opts.IncludeValues[EntityField.Birthdate]
-                        },
+                            Label = field.Key.ToLabel(),
+                            Value = field.Key.ToString(),
+                            Default = !opts.SortIncludeMatch && field.Value
+                        }
+                        ),
                         new()
                         {
                             Label = "No Extra Info",
@@ -391,61 +307,14 @@ public static class ContextListExt
                     Required = false,
                     MaxValues = 8,
                     Options = [
-                        new()
+                        .. opts.WithFilter.AsEnumerable().Select(field =>
+                        new MessageComponentOption()
                         {
-                            Label = "Displayname",
-                            Value = EntityField.DisplayName.ToString(),
-                            Default = opts.WithFilter[EntityField.DisplayName]
-                        },
-                        new()
-                        {
-                            Label = "Description",
-                            Value = EntityField.Description.ToString(),
-                            Default = opts.WithFilter[EntityField.Description]
-                        },
-                        new()
-                        {
-                            Label = "Avatar",
-                            Value = EntityField.Avatar.ToString(),
-                            Default = opts.WithFilter[EntityField.Avatar]
-                        },
-                        new()
-                        {
-                            Label = "Proxy Tags",
-                            Value = EntityField.ProxyTags.ToString(),
-                            Default = opts.WithFilter[EntityField.ProxyTags]
-                        },
-                        new()
-                        {
-                            Label = "Aliases",
-                            Value = EntityField.Aliases.ToString(),
-                            Default = opts.WithFilter[EntityField.Aliases]
-                        },
-                        new()
-                        {
-                            Label = "Pronouns",
-                            Value = EntityField.Pronouns.ToString(),
-                            Default = opts.WithFilter[EntityField.Pronouns]
-                        },
-                        new()
-                        {
-                            Label = "Color",
-                            Value = EntityField.Color.ToString(),
-                            Default = opts.WithFilter[EntityField.Color]
-                        },
-                        new()
-                        {
-                            Label = "Birthday",
-                            Value = EntityField.Birthdate.ToString(),
-                            Default = opts.WithFilter[EntityField.Birthdate]
-                        },
-                        // new()
-                        // {
-                        //     Label = "Groups",
-                        //     Value = EntityField.Groups.ToString(),
-                        //     Default = opts.WithFilter[EntityField.Groups]
-                        // },
-                    ]
+                            Label = field.Key.ToLabel(),
+                            Value = field.Key.ToString(),
+                            Default = !opts.SortIncludeMatch && field.Value
+                        }
+                        )],
                 }
             },
             new()
@@ -459,61 +328,14 @@ public static class ContextListExt
                     Required = false,
                     MaxValues = 8,
                     Options = [
-                        new()
+                        .. opts.WithOutFilter.AsEnumerable().Select(field =>
+                        new MessageComponentOption()
                         {
-                            Label = "Displayname",
-                            Value = EntityField.DisplayName.ToString(),
-                            Default = opts.WithOutFilter[EntityField.DisplayName]
-                        },
-                        new()
-                        {
-                            Label = "Description",
-                            Value = EntityField.Description.ToString(),
-                            Default = opts.WithOutFilter[EntityField.Description]
-                        },
-                        new()
-                        {
-                            Label = "Avatar",
-                            Value = EntityField.Avatar.ToString(),
-                            Default = opts.WithOutFilter[EntityField.Avatar]
-                        },
-                        new()
-                        {
-                            Label = "Proxy Tags",
-                            Value = EntityField.ProxyTags.ToString(),
-                            Default = opts.WithOutFilter[EntityField.ProxyTags]
-                        },
-                        new()
-                        {
-                            Label = "Aliases",
-                            Value = EntityField.Aliases.ToString(),
-                            Default = opts.WithOutFilter[EntityField.Aliases]
-                        },
-                        new()
-                        {
-                            Label = "Pronouns",
-                            Value = EntityField.Pronouns.ToString(),
-                            Default = opts.WithOutFilter[EntityField.Pronouns]
-                        },
-                        new()
-                        {
-                            Label = "Color",
-                            Value = EntityField.Color.ToString(),
-                            Default = opts.WithOutFilter[EntityField.Color]
-                        },
-                        new()
-                        {
-                            Label = "Birthday",
-                            Value = EntityField.Birthdate.ToString(),
-                            Default = opts.WithOutFilter[EntityField.Birthdate]
-                        },
-                        // new()
-                        // {
-                        //     Label = "Groups",
-                        //     Value = EntityField.Groups.ToString(),
-                        //     Default = opts.WithOutFilter[EntityField.Groups]
-                        // },
-                    ]
+                            Label = field.Key.ToLabel(),
+                            Value = field.Key.ToString(),
+                            Default = !opts.SortIncludeMatch && field.Value
+                        })
+                    ],
                 }
             },
             new()
@@ -560,60 +382,13 @@ public static class ContextListExt
                     CustomId = "sort_select",
                     MaxValues = 1,
                     Options = [
-                        new()
+                        .. opts.SortOptions.Select(field =>
+                        new MessageComponentOption()
                         {
-                            Label = "Name (Default)",
-                            Value = SortProperty.Name.ToString(),
-                            Default = opts.SortProperty == SortProperty.Name
-                        },
-                        new()
-                        {
-                            Label = "Displayname",
-                            Value = SortProperty.DisplayName.ToString(),
-                            Default = opts.SortProperty == SortProperty.DisplayName
-                        },
-                        new()
-                        {
-                            Label = "ID",
-                            Value = SortProperty.Hid.ToString(),
-                            Default = opts.SortProperty == SortProperty.Hid
-                        },
-                        new()
-                        {
-                            Label = "Message Count",
-                            Value = SortProperty.MessageCount.ToString(),
-                            Default = opts.SortProperty == SortProperty.MessageCount
-                        },
-                        new()
-                        {
-                            Label = "Creation Date",
-                            Value = SortProperty.CreationDate.ToString(),
-                            Default = opts.SortProperty == SortProperty.CreationDate
-                        },
-                        new()
-                        {
-                            Label = "Last Switch",
-                            Value = SortProperty.LastSwitch.ToString(),
-                            Default = opts.SortProperty == SortProperty.LastSwitch
-                        },
-                        new()
-                        {
-                            Label = "Last Message",
-                            Value = SortProperty.LastMessage.ToString(),
-                            Default = opts.SortProperty == SortProperty.LastMessage
-                        },
-                        new()
-                        {
-                            Label = "Birthday",
-                            Value = SortProperty.Birthdate.ToString(),
-                            Default = opts.SortProperty == SortProperty.Birthdate
-                        },
-                        new()
-                        {
-                            Label = "Random",
-                            Value = SortProperty.Random.ToString(),
-                            Default = opts.SortProperty == SortProperty.Random
-                        },
+                            Label = field.ToLabel(),
+                            Value = field.ToString(),
+                            Default = opts.SortProperty == field
+                        })
                     ]
                 }
             },
@@ -630,56 +405,56 @@ public static class ContextListExt
                         new()
                         {
                             Label = "Pronouns",
-                            Value = EntityField.Pronouns.ToString(),
-                            Default = opts.IncludeValues[EntityField.Pronouns]
+                            Value = ListEntityField.Pronouns.ToString(),
+                            Default = opts.IncludedFields[ListEntityField.Pronouns]
                         },
                         new()
                         {
                             Label = "Birthdate",
-                            Value = EntityField.Birthdate.ToString(),
-                            Default = opts.IncludeValues[EntityField.Birthdate]
+                            Value = ListEntityField.Birthdate.ToString(),
+                            Default = opts.IncludedFields[ListEntityField.Birthdate]
                         },
                         new()
                         {
                             Label = "Proxy Tags",
-                            Value = EntityField.ProxyTags.ToString(),
-                            Default = opts.IncludeValues[EntityField.ProxyTags]
+                            Value = ListEntityField.ProxyTags.ToString(),
+                            Default = opts.IncludedFields[ListEntityField.ProxyTags]
                         },
                         new()
                         {
                             Label = "Message Count",
-                            Value = EntityField.MessageCount.ToString(),
-                            Default = opts.IncludeValues[EntityField.MessageCount]
+                            Value = ListEntityField.MessageCount.ToString(),
+                            Default = opts.IncludedFields[ListEntityField.MessageCount]
                         },
                         new()
                         {
                             Label = "Creation Date",
-                            Value = EntityField.CreationDate.ToString(),
-                            Default = opts.IncludeValues[EntityField.CreationDate]
+                            Value = ListEntityField.CreationDate.ToString(),
+                            Default = opts.IncludedFields[ListEntityField.CreationDate]
                         },
                         new()
                         {
                             Label = "Avatar",
-                            Value = EntityField.Avatar.ToString(),
-                            Default = opts.IncludeValues[EntityField.Avatar]
+                            Value = ListEntityField.Avatar.ToString(),
+                            Default = opts.IncludedFields[ListEntityField.Avatar]
                         },
                         new()
                         {
                             Label = "Description",
-                            Value = EntityField.Description.ToString(),
-                            Default = opts.IncludeValues[EntityField.Description]
+                            Value = ListEntityField.Description.ToString(),
+                            Default = opts.IncludedFields[ListEntityField.Description]
                         },
-                        // new()
-                        // {
-                        //     Label = "Groups",
-                        //     Value = EntityField.Groups.ToString(),
-                        //     Default = opts.IncludeValues[EntityField.Groups]
-                        // },
+                        new()
+                        {
+                            Label = "Groups",
+                            Value = ListEntityField.Groups.ToString(),
+                            Default = opts.IncludedFields[ListEntityField.Groups]
+                        },
                         new()
                         {
                             Label = "Aliases",
-                            Value = EntityField.Aliases.ToString(),
-                            Default = opts.IncludeValues[EntityField.Aliases]
+                            Value = ListEntityField.Aliases.ToString(),
+                            Default = opts.IncludedFields[ListEntityField.Aliases]
                         },
                     ]
                 }
@@ -761,21 +536,21 @@ public static class ContextListExt
             {
                 var ret = $"[`{m.DisplayHid(ctx.Config, isList: true, shouldPad: shouldPad)}`] **{m.NameFor(ctx)}** ";
 
-                if (opts.IncludeValues[EntityField.MessageCount] && m.MessageCountFor(lookupCtx) is { } count)
+                if (opts.IncludedFields[ListEntityField.MessageCount] && m.MessageCountFor(lookupCtx) is { } count)
                     ret += $"({count} messages)";
-                else if (opts.IncludeValues[EntityField.LastSwitch] && m.MetadataPrivacy.TryGet(lookupCtx, m.LastSwitchTime, out var lastSw))
+                else if (opts.IncludedFields[ListEntityField.LastSwitch] && m.MetadataPrivacy.TryGet(lookupCtx, m.LastSwitchTime, out var lastSw))
                     ret += $"(last switched in: <t:{lastSw.Value.ToUnixTimeSeconds()}>)";
-                else if (opts.IncludeValues[EntityField.LastMessage] && m.MetadataPrivacy.TryGet(lookupCtx, m.LastMessageTimestamp, out var lastMsg))
+                else if (opts.IncludedFields[ListEntityField.LastMessage] && m.MetadataPrivacy.TryGet(lookupCtx, m.LastMessageTimestamp, out var lastMsg))
                     ret += $"(last message: <t:{m.LastMessageTimestamp.Value.ToUnixTimeSeconds()}>)";
-                else if (opts.IncludeValues[EntityField.CreationDate] && m.MetadataPrivacy.TryGet(lookupCtx, m.Created, out var created))
+                else if (opts.IncludedFields[ListEntityField.CreationDate] && m.MetadataPrivacy.TryGet(lookupCtx, m.Created, out var created))
                     ret += $"(created at <t:{created.ToUnixTimeSeconds()}>)";
-                else if (opts.IncludeValues[EntityField.Avatar] && m.AvatarFor(lookupCtx) is { } avatarUrl)
+                else if (opts.IncludedFields[ListEntityField.Avatar] && m.AvatarFor(lookupCtx) is { } avatarUrl)
                     ret += $"([avatar URL]({avatarUrl}))";
-                else if (opts.IncludeValues[EntityField.Pronouns] && m.PronounsFor(lookupCtx) is { } pronouns)
+                else if (opts.IncludedFields[ListEntityField.Pronouns] && m.PronounsFor(lookupCtx) is { } pronouns)
                     ret += $"({pronouns})";
-                else if (opts.IncludeValues[EntityField.DisplayName] && m.DisplayName != null && m.NamePrivacy.CanAccess(lookupCtx))
+                else if (opts.IncludedFields[ListEntityField.DisplayName] && m.DisplayName != null && m.NamePrivacy.CanAccess(lookupCtx))
                     ret += $"({m.DisplayName})";
-                else if (opts.IncludeValues[EntityField.Birthdate] && m.BirthdayFor(lookupCtx) is { } birthday)
+                else if (opts.IncludedFields[ListEntityField.Birthdate] && m.BirthdayFor(lookupCtx) is { } birthday)
                     ret += $"(birthday: {m.BirthdayString})";
                 else if (m.HasProxyTags && m.ProxyPrivacy.CanAccess(lookupCtx))
                 {
@@ -807,22 +582,22 @@ public static class ContextListExt
                 if (m.ProxyTags.Count > 0 && m.ProxyPrivacy.CanAccess(lookupCtx))
                     profile.Append($"\n**Proxy tags**: {m.ProxyTagsString()}");
 
-                if ((opts.IncludeValues[EntityField.MessageCount] || opts.SortProperty == SortProperty.MessageCount) &&
+                if ((opts.IncludedFields[ListEntityField.MessageCount] || opts.SortProperty == ListEntityField.MessageCount) &&
                     m.MessageCountFor(lookupCtx) is { } count && m.MessageCount > 0)
                     profile.Append($"\n**Message count:** {count}");
 
-                if ((opts.IncludeValues[EntityField.LastMessage] || opts.SortProperty == SortProperty.LastMessage) && m.MetadataPrivacy.TryGet(lookupCtx, m.LastMessageTimestamp, out var lastMsg))
+                if ((opts.IncludedFields[ListEntityField.LastMessage] || opts.SortProperty == ListEntityField.LastMessage) && m.MetadataPrivacy.TryGet(lookupCtx, m.LastMessageTimestamp, out var lastMsg))
                     profile.Append($"\n**Last message:** {m.LastMessageTimestamp.Value.FormatZoned(ctx.Zone)}");
 
-                if ((opts.IncludeValues[EntityField.LastSwitch] || opts.SortProperty == SortProperty.LastSwitch) &&
+                if ((opts.IncludedFields[ListEntityField.LastSwitch] || opts.SortProperty == ListEntityField.LastSwitch) &&
                     m.MetadataPrivacy.TryGet(lookupCtx, m.LastSwitchTime, out var lastSw))
                     profile.Append($"\n**Last switched in:** {lastSw.Value.FormatZoned(ctx.Zone)}");
 
-                if ((opts.IncludeValues[EntityField.CreationDate] || opts.SortProperty == SortProperty.CreationDate) &&
+                if ((opts.IncludedFields[ListEntityField.CreationDate] || opts.SortProperty == ListEntityField.CreationDate) &&
                     m.MetadataPrivacy.TryGet(lookupCtx, m.Created, out var created))
                     profile.Append($"\n**Created on:** {created.FormatZoned(ctx.Zone)}");
 
-                if (opts.IncludeValues[EntityField.Avatar] && m.AvatarFor(lookupCtx) is { } avatar)
+                if (opts.IncludedFields[ListEntityField.Avatar] && m.AvatarFor(lookupCtx) is { } avatar)
                     profile.Append($"\n**Avatar URL:** {avatar.TryGetCleanCdnUrl()}");
 
                 if (m.DescriptionFor(lookupCtx) is { } desc)
@@ -868,15 +643,15 @@ public static class ContextListExt
             {
                 var ret = $"[`{g.DisplayHid(ctx.Config, isList: true, shouldPad: shouldPad)}`] **{g.NameFor(ctx)}** ";
 
-                switch (opts.SortProperty)
+                switch (opts.SortProperty.Field)
                 {
-                    case SortProperty.DisplayName:
+                    case ListEntityField.DisplayName:
                         {
                             if (g.NamePrivacy.CanAccess(lookupCtx) && g.DisplayName != null)
                                 ret += $"({g.DisplayName})";
                             break;
                         }
-                    case SortProperty.CreationDate:
+                    case ListEntityField.CreationDate:
                         {
                             if (g.MetadataPrivacy.TryGet(lookupCtx, g.Created, out var created))
                                 ret += $"(created at <t:{created.ToUnixTimeSeconds()}>)";
@@ -884,19 +659,13 @@ public static class ContextListExt
                         }
                     default:
                         {
-                            if (opts.IncludeValues[EntityField.CreationDate] &&
+                            if (opts.IncludedFields[ListEntityField.CreationDate] &&
                                      g.MetadataPrivacy.TryGet(lookupCtx, g.Created, out var created))
-                            {
                                 ret += $"(created at <t:{created.ToUnixTimeSeconds()}>)";
-                            }
-                            else if (opts.IncludeValues[EntityField.DisplayName] && g.DisplayName != null && g.NamePrivacy.CanAccess(lookupCtx))
-                            {
+                            else if (opts.IncludedFields[ListEntityField.DisplayName] && g.DisplayName != null && g.NamePrivacy.CanAccess(lookupCtx))
                                 ret += $"({g.DisplayName})";
-                            }
-                            else if (opts.IncludeValues[EntityField.Avatar] && g.IconFor(lookupCtx) is { } avatarUrl)
-                            {
+                            else if (opts.IncludedFields[ListEntityField.Avatar] && g.IconFor(lookupCtx) is { } avatarUrl)
                                 ret += $"([avatar URL]({avatarUrl}))";
-                            }
                             else
                             {
                                 // -priv/-pub and listprivacy affects whether count is shown
@@ -906,21 +675,15 @@ public static class ContextListExt
                                     if (g.ListPrivacy == PrivacyLevel.Public || lookupCtx == LookupContext.ByOwner)
                                     {
                                         if (ctx.MatchFlag("all", "a"))
-                                        {
                                             ret += $"({"member".ToQuantity(g.TotalMemberCount)})";
-                                        }
                                         else
-                                        {
                                             ret += $"({"member".ToQuantity(g.PublicMemberCount)})";
-                                        }
                                     }
                                 }
                                 else
                                 {
                                     if (g.ListPrivacy == PrivacyLevel.Public)
-                                    {
                                         ret += $"({"member".ToQuantity(g.PublicMemberCount)})";
-                                    }
                                 }
                             }
 
@@ -949,11 +712,11 @@ public static class ContextListExt
                         profile.Append($"\n**Member Count:** {g.PublicMemberCount}");
                 }
 
-                if ((opts.IncludeValues[EntityField.CreationDate] || opts.SortProperty == SortProperty.CreationDate) &&
+                if ((opts.IncludedFields[ListEntityField.CreationDate] || opts.SortProperty == ListEntityField.CreationDate) &&
                     g.MetadataPrivacy.TryGet(lookupCtx, g.Created, out var created))
                     profile.Append($"\n**Created on:** {created.FormatZoned(ctx.Zone)}");
 
-                if (opts.IncludeValues[EntityField.Avatar] && g.IconFor(lookupCtx) is { } avatar)
+                if (opts.IncludedFields[ListEntityField.Avatar] && g.IconFor(lookupCtx) is { } avatar)
                     profile.Append($"\n**Avatar URL:** {avatar.TryGetCleanCdnUrl()}");
 
                 if (g.DescriptionFor(lookupCtx) is { } desc)
@@ -1013,15 +776,15 @@ public static class ContextListExt
             {
                 var ret = $"[`{g.DisplayHid(ctx.Config, isList: true, shouldPad: shouldPad)}`] **{g.NameFor(ctx)}** ";
 
-                switch (opts.SortProperty)
+                switch (opts.SortProperty.Field)
                 {
-                    case SortProperty.DisplayName:
+                    case ListEntityField.DisplayName:
                         {
                             if (g.NamePrivacy.CanAccess(lookupCtx) && g.DisplayName != null)
                                 ret += $"({g.DisplayName})";
                             break;
                         }
-                    case SortProperty.CreationDate:
+                    case ListEntityField.CreationDate:
                         {
                             if (g.MetadataPrivacy.TryGet(lookupCtx, g.Created, out var created))
                                 ret += $"(created at <t:{created.ToUnixTimeSeconds()}>)";
@@ -1029,16 +792,16 @@ public static class ContextListExt
                         }
                     default:
                         {
-                            if (opts.IncludeValues[EntityField.CreationDate] &&
+                            if (opts.IncludedFields[ListEntityField.CreationDate] &&
                                      g.MetadataPrivacy.TryGet(lookupCtx, g.Created, out var created))
                             {
                                 ret += $"(created at <t:{created.ToUnixTimeSeconds()}>)";
                             }
-                            else if (opts.IncludeValues[EntityField.DisplayName] && g.DisplayName != null && g.NamePrivacy.CanAccess(lookupCtx))
+                            else if (opts.IncludedFields[ListEntityField.DisplayName] && g.DisplayName != null && g.NamePrivacy.CanAccess(lookupCtx))
                             {
                                 ret += $"({g.DisplayName})";
                             }
-                            else if (opts.IncludeValues[EntityField.Avatar] && g.IconFor(lookupCtx) is { } avatarUrl)
+                            else if (opts.IncludedFields[ListEntityField.Avatar] && g.IconFor(lookupCtx) is { } avatarUrl)
                             {
                                 ret += $"([avatar URL]({avatarUrl}))";
                             }
@@ -1094,11 +857,11 @@ public static class ContextListExt
                         profile.Append($"\n**Member Count:** {g.PublicMemberCount}");
                 }
 
-                if ((opts.IncludeValues[EntityField.CreationDate] || opts.SortProperty == SortProperty.CreationDate) &&
+                if ((opts.IncludedFields[ListEntityField.CreationDate] || opts.SortProperty == ListEntityField.CreationDate) &&
                     g.MetadataPrivacy.TryGet(lookupCtx, g.Created, out var created))
                     profile.Append($"\n**Created on:** {created.FormatZoned(ctx.Zone)}");
 
-                if (opts.IncludeValues[EntityField.Avatar] && g.IconFor(lookupCtx) is { } avatar)
+                if (opts.IncludedFields[ListEntityField.Avatar] && g.IconFor(lookupCtx) is { } avatar)
                     profile.Append($"\n**Avatar URL:** {avatar.TryGetCleanCdnUrl()}");
 
                 if (g.DescriptionFor(lookupCtx) is { } desc)

@@ -375,19 +375,19 @@ public class EmbedService
             headerText += $"\n**Display name:** {member.DisplayName.Truncate(1024)}";
         if (guild != null && guildDisplayName != null)
             headerText += $"\n**Server nickname (for '{guild.Name}'):** {guildDisplayName.Truncate(1024)}";
-        if (ccfg != null && ccfg.CardShowColorHex && !member.Color.EmptyOrNull() && (opts == null || opts.IncludeValues[EntityField.Color]))
+        if (ccfg != null && ccfg.CardShowColorHex && !member.Color.EmptyOrNull() && (opts == null || opts.IncludedFields[ListEntityField.Color]))
             headerText += $"\n**Color:** #{member.Color}";
-        if (member.PronounsFor(ctx) is { } pronouns && !string.IsNullOrWhiteSpace(pronouns) && (opts == null || opts.IncludeValues[EntityField.Pronouns]))
+        if (member.PronounsFor(ctx) is { } pronouns && !string.IsNullOrWhiteSpace(pronouns) && (opts == null || opts.IncludedFields[ListEntityField.Pronouns]))
             headerText += $"\n**Pronouns:** {pronouns}";
-        if (member.BirthdayFor(ctx) != null && (opts == null || opts.IncludeValues[EntityField.Birthdate]))
+        if (member.BirthdayFor(ctx) != null && (opts == null || opts.IncludedFields[ListEntityField.Birthdate]))
             headerText += $"\n**Birthday:** {member.BirthdayString}";
-        if (member.MessageCountFor(ctx) is { } count && member.MessageCount > 0 && (opts == null || opts.IncludeValues[EntityField.MessageCount]))
+        if (member.MessageCountFor(ctx) is { } count && member.MessageCount > 0 && (opts == null || opts.IncludedFields[ListEntityField.MessageCount]))
             headerText += $"\n**Message count:** {count}";
-        if (flattenComponents && member.CreatedFor(ctx) is { } created && (opts == null || opts.IncludeValues[EntityField.CreationDate]))
+        if (flattenComponents && member.CreatedFor(ctx) is { } created && (opts == null || opts.IncludedFields[ListEntityField.CreationDate]))
             headerText += $"\n**Created:** {DiscordUtils.InstantToTimestampString(member.Created)}";
 
         List<MessageComponent> extraData = [];
-        if (member.Aliases.Count > 0 && member.AliasPrivacy.CanAccess(ctx) && (opts == null || opts.IncludeValues[EntityField.Aliases]))
+        if (member.Aliases.Count > 0 && member.AliasPrivacy.CanAccess(ctx) && (opts == null || opts.IncludedFields[ListEntityField.Aliases]))
         {
             var aliases = string.Join("\n", member.Aliases);
 
@@ -405,7 +405,7 @@ public class EmbedService
             flattenedStr.Append($"**Aliases:**\n{aliases.Truncate(1024)}");
         }
 
-        if (member.HasProxyTags && member.ProxyPrivacy.CanAccess(ctx) && (opts == null || opts.IncludeValues[EntityField.ProxyTags]))
+        if (member.HasProxyTags && member.ProxyPrivacy.CanAccess(ctx) && (opts == null || opts.IncludedFields[ListEntityField.ProxyTags]))
         {
             extraData.Add(new MessageComponent
             {
@@ -421,7 +421,7 @@ public class EmbedService
             flattenedStr.Append($"\n**Proxy tags:**\n{member.ProxyTagsString("\n").Truncate(1024)}");
         }
 
-        if (groups?.Count > 0 && (opts == null || opts.IncludeValues[EntityField.Groups]))
+        if (groups?.Count > 0 && (opts == null || opts.IncludedFields[ListEntityField.Groups]))
         {
             // More than 5 groups show in "compact" format without ID
             var content = groups.Count > 5
@@ -443,7 +443,7 @@ public class EmbedService
         }
 
         List<MessageComponent> descComponents = [];
-        if (member.DescriptionFor(ctx) is { } desc && !string.IsNullOrWhiteSpace(desc) && (opts == null || opts.IncludeValues[EntityField.Description]))
+        if (member.DescriptionFor(ctx) is { } desc && !string.IsNullOrWhiteSpace(desc) && (opts == null || opts.IncludedFields[ListEntityField.Description]))
         {
             descComponents.Add(new()
             {
@@ -486,7 +486,7 @@ public class EmbedService
             flattenedHeaderStr += "\n" + headerText;
         }
 
-        if (!string.IsNullOrWhiteSpace(avatar) && (opts == null || opts.IncludeValues[EntityField.Avatar]))
+        if (!string.IsNullOrWhiteSpace(avatar) && (opts == null || opts.IncludedFields[ListEntityField.Avatar]))
             header = [
                 new MessageComponent()
                 {

@@ -1,7 +1,9 @@
 #nullable enable
-using System.Text;
 
 using Dapper;
+
+using SqlKata;
+using SqlKata.Compilers;
 
 namespace PluralKit.Core;
 
@@ -10,78 +12,106 @@ public static class DatabaseViewsExt
     public static Task<IEnumerable<ListedGroup>> QueryGroupList(this IPKConnection conn, SystemId system,
                                                                   ListQueryOptions opts)
     {
-        StringBuilder query;
+        PostgresCompiler compiler = new();
+
+        Query query;
         if (opts.MemberFilter == null)
-            query = new StringBuilder("select * from group_list where system = @system");
+            query = new Query("group_list").Where("system", system.Value);
         else
-            query = new StringBuilder("select group_list.* from group_members inner join group_list on group_list.id = group_members.group_id where member_id = @MemberFilter");
+            query = new Query("group_list")
+                .From("group_members").Join("group_list", "group_list.id", "group_members.group_id")
+                .Where("member_id", opts.MemberFilter);
 
         if (opts.PrivacyFilter != null)
-            query.Append($" and visibility = {(int)opts.PrivacyFilter}");
+            query.Where("visibility", (int)opts.PrivacyFilter);
 
         if (opts.Search != null)
         {
-            static string Filter(string column) =>
-                $"(position(lower(@filter) in lower(coalesce({column}, ''))) > 0)";
+            string Filter(string column) =>
+                $"(position(lower('{opts.Search}') in lower(coalesce({column}, ''))) > 0)";
 
             var nameColumn = opts.Context == LookupContext.ByOwner ? "name" : "public_name";
-            query.Append($" and ({Filter(nameColumn)} or {Filter("display_name")}");
-            if (opts.SearchDescription)
+            query.Where(q =>
             {
-                // We need to account for the possibility of description privacy when searching
-                // If we're looking up from the outside, only search "public_description" (defined in the view; null if desc is private)
-                // If we're the owner, just search the full description
-                var descriptionColumn =
-                    opts.Context == LookupContext.ByOwner ? "description" : "public_description";
-                query.Append($"or {Filter(descriptionColumn)}");
-            }
+                q.OrWhereRaw(Filter(nameColumn)).OrWhereRaw(Filter("display_name"));
+                if (opts.SearchDescription)
+                {
+                    // We need to account for the possibility of description privacy when searching
+                    // If we're looking up from the outside, only search "public_description" (defined in the view; null if desc is private)
+                    // If we're the owner, just search the full description
+                    var descriptionColumn =
+                        opts.Context == LookupContext.ByOwner ? "description" : "public_description";
+                    q.OrWhereRaw(Filter(descriptionColumn));
+                }
 
-            query.Append(")");
+                return q;
+            });
         }
 
-        return conn.QueryAsync<ListedGroup>(
-            query.ToString(),
-            new { system, filter = opts.Search, memberFilter = opts.MemberFilter });
+        var q = compiler.Compile(query);
+
+        return conn.QueryAsync<ListedGroup>(q.Sql, q.NamedBindings);
     }
-    public static Task<IEnumerable<ListedMember>> QueryMemberList(this IPKConnection conn, SystemId system,
-                                                                  ListQueryOptions opts)
+    public static async Task<IEnumerable<ListedMember>> QueryMemberList(this IPKConnection conn, SystemId system,
+                                                                  ListQueryOptions opts, bool withGroups = false)
     {
-        StringBuilder query;
+        PostgresCompiler compiler = new();
+
+        Query query;
         if (opts.GroupFilter == null)
-            query = new StringBuilder("select * from member_list where system = @system");
+            query = new Query("member_list").Where("system", system.Value);
         else
-            query = new StringBuilder(
-                "select member_list.* from group_members inner join member_list on member_list.id = group_members.member_id where group_id = @groupFilter");
+            query = new Query("member_list")
+                .From("group_members").Join("member_list", "member_list.member_id", "group_members.member_id")
+                .Where("group_id", opts.GroupFilter.Value);
 
         if (opts.PrivacyFilter != null)
-            query.Append($" and member_visibility = {(int)opts.PrivacyFilter}");
+            query.Where("member_visibility", (int)opts.PrivacyFilter);
 
         if (opts.Search != null)
         {
-            static string Filter(string column) =>
-                $"(position(lower(@filter) in lower(coalesce({column}, ''))) > 0)";
-            static string AliasFilter(string col) =>
-                $"(exists (select 1 from unnest({col}) as alias where position(lower(@filter) in lower(alias)) > 0))";
+            string Filter(string column) =>
+                $"(position(lower('{opts.Search}') in lower(coalesce({column}, ''))) > 0)";
+            string AliasFilter(string col) =>
+                $"(exists (select 1 from unnest({col}) as alias where position(lower('{opts.Search}') in lower(alias)) > 0))";
 
             var nameColumn = opts.Context == LookupContext.ByOwner ? "name" : "public_name";
             var aliasColumn = opts.Context == LookupContext.ByOwner ? "aliases" : "public_aliases";
 
-            query.Append($" and ({Filter(nameColumn)} or {Filter("display_name")} or {AliasFilter(aliasColumn)}");
-            if (opts.SearchDescription)
+            query.Where(q =>
             {
-                // We need to account for the possibility of description privacy when searching
-                // If we're looking up from the outside, only search "public_description" (defined in the view; null if desc is private)
-                // If we're the owner, just search the full description
-                var descriptionColumn =
-                    opts.Context == LookupContext.ByOwner ? "description" : "public_description";
-                query.Append($"or {Filter(descriptionColumn)}");
-            }
+                q.OrWhereRaw(Filter(nameColumn)).OrWhereRaw(Filter("display_name")).OrWhereRaw(AliasFilter(aliasColumn));
 
-            query.Append(")");
+                if (opts.SearchDescription)
+                {
+                    // We need to account for the possibility of description privacy when searching
+                    // If we're looking up from the outside, only search "public_description" (defined in the view; null if desc is private)
+                    // If we're the owner, just search the full description
+                    var descriptionColumn =
+                        opts.Context == LookupContext.ByOwner ? "description" : "public_description";
+                    q.OrWhereRaw(Filter(descriptionColumn));
+                }
+
+                return q;
+            });
         }
 
-        return conn.QueryAsync<ListedMember>(query.ToString(),
-            new { system, filter = opts.Search, groupFilter = opts.GroupFilter });
+        var q = compiler.Compile(query);
+        var members = await conn.QueryAsync<ListedMember>(q.Sql, q.NamedBindings);
+
+        if (!withGroups) return members;
+
+        var groupQuery = compiler.Compile(new Query("groups").Where("system", system));
+        var groups = await conn.QueryAsync<PKGroup>(groupQuery.Sql, groupQuery.NamedBindings);
+
+        return members.Select(m =>
+        {
+            m.Groups = m.GroupIds?.Select(gId =>
+            {
+                return groups.First(g => g.Id.Value == gId);
+            }) ?? [];
+            return m;
+        });
     }
 
     public struct ListQueryOptions

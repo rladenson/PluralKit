@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Autofac;
 
 using Myriad.Types;
@@ -6,31 +7,43 @@ namespace PluralKit.Bot.Interactive;
 
 public class ListInteractive(Context ctx): BaseInteractive(ctx)
 {
-    public bool? Result { get; private set; }
     public ulong? User { get; set; } = ctx.Author.Id;
     public ButtonStyle Style { get; set; } = ButtonStyle.Secondary;
     public int Page { get; set; } = 0;
     public int PageCount { get; set; } = 1;
     public Func<int, (MessageComponent, MessageComponent, List<MessageComponent>)> ContentBuilder { get; init; }
-    public Func<ApplicationCommandInteractionData?, int> Renderer { get; init; }
+    public Func<int, int, ApplicationCommandInteractionData?, int> Renderer { get; init; }
     public string? Color { get; set; }
     public Func<MessageComponent[]>? OptionsModal { get; init; }
 
+    private int _additionalCharacters;
+    // TODO: Figure out how to assign this dynamically
+    // This is the number of components the list itself uses not including the pages
+    private readonly int _additionalComponents = 11;
+
     public override async Task Start()
     {
-        if (PageCount > 1)
-        {
-            AddButton(ctx => OnButtonClick(ctx, "first"), "\u23EA", Style, innerButton: false); // <<
-            AddButton(ctx => OnButtonClick(ctx, "previous"), "\u2B05", Style, innerButton: false); // <
-            AddButton(ctx => OnButtonClick(ctx, "next"), "\u27A1", Style, innerButton: false); // >
-            AddButton(ctx => OnButtonClick(ctx, "last"), "\u23E9", Style, innerButton: false); // >>
-            AddButton(ctx => OnButtonClick(ctx, "input_page"), "\uD83D\uDD22", Style, innerButton: false); // 1234
-        }
+        // We want to make sure that the pages we make account for the button characters for character count
+        // But we don't want to add page flip buttons if we only have one page
+        // So a pending list
+        List<(string value, string label)> pendingButtons = [];
+        pendingButtons.Add(("first", "\u23EA")); // <<
+        pendingButtons.Add(("previous", "\u2B05")); // <
+        pendingButtons.Add(("next", "\u27A1")); // >
+        pendingButtons.Add(("last", "\u23E9")); // >>
+        pendingButtons.Add(("input_page", "\uD83D\uDD22")); // 1234
 
         if (OptionsModal != null)
             AddButton(ctx => OnButtonClick(ctx, "options"), "List Options", ButtonStyle.Secondary);
         // AddButton(ctx => OnButtonClick(ctx, "finish"), "\u2714  Done with List", ButtonStyle.Success);
         // AddButton(ctx => OnButtonClick(ctx, "delete"), "\u2716  Delete List Message", ButtonStyle.Danger);
+
+        _additionalCharacters = _buttons.Sum(b => b.Label.Length) + pendingButtons.Sum(b => b.label.Length);
+        PageCount = Renderer(_additionalCharacters, _additionalComponents, null);
+
+        if (PageCount > 1)
+            foreach (var (value, label) in pendingButtons)
+                AddButton(ctx => OnButtonClick(ctx, value), label, Style, innerButton: false);
 
         await Send();
     }
@@ -39,7 +52,7 @@ public class ListInteractive(Context ctx): BaseInteractive(ctx)
     {
         if (ctx.User.Id != User)
         {
-            // todo make silent instead of error?
+            // TODO: make silent instead of error?
             await Error(ctx, Errors.InteractionWrongAccount(User ?? 0));
             return;
         }
@@ -101,7 +114,7 @@ public class ListInteractive(Context ctx): BaseInteractive(ctx)
     {
         async Task OptionsModalHandler(InteractionContext ctx)
         {
-            PageCount = Renderer(ctx.Event.Data);
+            PageCount = Renderer(_additionalCharacters, _additionalComponents, ctx.Event.Data);
             if (Page > PageCount) Page = 0;
             await Update(ctx);
         }

@@ -35,4 +35,18 @@ public record MessageComponent
         public string? Value { get; init; }
         public bool? Default { get; init; }
     }
+
+    public int ComponentCount()
+    {
+        var count = 1;
+
+        if (Component != null)
+            count += Component.ComponentCount();
+        if (Components?.Length > 0)
+            count += Components.Sum(c => c.ComponentCount());
+        if (Accessory != null)
+            count++;
+
+        return count;
+    }
 }

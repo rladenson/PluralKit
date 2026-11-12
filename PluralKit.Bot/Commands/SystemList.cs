@@ -23,7 +23,7 @@ public class SystemList
         // - ParseListOptions checks list access privacy and sets the privacy filter (which members show up in list)
         // - RenderMemberList checks the indivual privacy for each member (NameFor, etc)
         // the own system is always allowed to look up their list
-        var opts = ctx.ParseListOptions(ctx.DirectLookupContextFor(target.Id), ctx.LookupContextFor(target.Id));
+        var opts = ctx.ParseListOptions(ctx.DirectLookupContextFor(target.Id), ctx.LookupContextFor(target.Id), ListEntity.Member);
 
         if (ctx.MatchFlag("show-embed", "se"))
         {

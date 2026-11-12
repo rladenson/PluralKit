@@ -59,7 +59,7 @@ public class GroupMember
     public async Task ListMemberGroups(Context ctx, PKMember target)
     {
         var targetSystem = await ctx.Repository.GetSystem(target.System);
-        var opts = ctx.ParseListOptions(ctx.DirectLookupContextFor(target.System), ctx.LookupContextFor(target.System));
+        var opts = ctx.ParseListOptions(ctx.DirectLookupContextFor(target.System), ctx.LookupContextFor(target.System), ListEntity.Group);
         opts.MemberFilter = target.Id;
 
         var title = new StringBuilder($"Groups containing {target.NameFor(ctx)} (`{target.DisplayHid(ctx.Config)}`) in ");
@@ -153,7 +153,7 @@ public class GroupMember
         var targetSystem = await GetGroupSystem(ctx, target);
         ctx.CheckSystemPrivacy(targetSystem.Id, target.ListPrivacy);
 
-        var opts = ctx.ParseListOptions(ctx.DirectLookupContextFor(target.System), ctx.LookupContextFor(target.System));
+        var opts = ctx.ParseListOptions(ctx.DirectLookupContextFor(target.System), ctx.LookupContextFor(target.System), ListEntity.Member);
         opts.GroupFilter = target.Id;
 
         var title = new StringBuilder($"Members of {target.DisplayName ?? target.Name} (`{target.DisplayHid(ctx.Config)}`) in ");

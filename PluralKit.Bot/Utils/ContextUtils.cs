@@ -232,42 +232,47 @@ public static class ContextUtils
 
         string footer = "";
 
-        int MakePages(ApplicationCommandInteractionData? optsOverride = null)
+        // Make all the pages accounting for both character limits and component limits
+        int MakePages(int additionalCharacters, int additionalComponents, ApplicationCommandInteractionData? optsOverride = null)
         {
-            const int MAX_CHARACTERS = 4000;
             // 17 is an estimate based on a max page number of 5 digits
             // ## [XXXXX/XXXXX] {title}
-            var maxTitleLength = 16 + title.Length;
-            var leftoverCharacters = MAX_CHARACTERS - maxTitleLength - footer.Length;
+            var maxTitleLength = 17 + title.Length;
+            var maxCharacters = 4000 - maxTitleLength - footer.Length - additionalCharacters;
+
+            var maxComponents = 40 - additionalComponents;
 
             pages = [];
             currentPage = [];
             var currentPageLength = 0;
+            var currentPageComponents = 0;
 
             var (newFooter, renderedItems) = renderer(optsOverride);
             footer = newFooter;
 
             foreach (var item in renderedItems)
             {
-                if (item.CharacterCount > leftoverCharacters)
+                if (item.CharacterCount > maxCharacters)
                     throw new PKError("Item in list too long, overfills one page");
-                if (currentPageLength + item.CharacterCount > leftoverCharacters || (maxItemsPage != null && currentPage.Count >= maxItemsPage))
+                if (currentPageLength + item.CharacterCount > maxCharacters
+                    || (maxItemsPage != null && currentPage.Count >= maxItemsPage)
+                    // If we're just using text for each section we don't need to worry about component limit. 
+                    // However if we are using components for each section we need to account for each of those and the separator after each
+                    || (currentPageComponents + (item.Components == null ? 0 : item.Components.Sum(c => c.ComponentCount()) + 1) > maxComponents))
                 {
                     pages.Add(currentPage);
                     currentPage = [];
                     currentPageLength = 0;
+                    currentPageComponents = 0;
                 }
                 currentPage.Add(item);
                 currentPageLength += item.CharacterCount;
+                currentPageComponents += item.Components == null ? 0 : (item.Components.Sum(c => c.ComponentCount()) + 1);
             }
             if (currentPage.Count > 0 || pages.Count == 0) pages.Add(currentPage);
 
             return pages.Count;
-
-
         }
-
-        MakePages();
 
         (MessageComponent, MessageComponent, List<MessageComponent>) MakeComponentForPage(int pageNumber)
         {
@@ -302,7 +307,6 @@ public static class ContextUtils
             ContentBuilder = MakeComponentForPage,
             Renderer = MakePages,
             Color = color,
-            PageCount = pages.Count,
             OptionsModal = optionsModal
         };
 

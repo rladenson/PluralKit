@@ -9,12 +9,12 @@ using PluralKit.Core;
 #nullable enable
 namespace PluralKit.Bot;
 
-public class ListOptions
+public class ListOptions(ListEntity entityType)
 {
-    private SortProperty? _sortProperty { get; set; }
-    public SortProperty SortProperty
+    private SortOption? _sortProperty { get; set; }
+    public SortOption SortProperty
     {
-        get => _sortProperty ?? SortProperty.Name;
+        get => _sortProperty ?? ListEntityField.Name;
         set
         {
             if (_sortProperty != null)
@@ -35,60 +35,119 @@ public class ListOptions
 
     public ListType Type { get; set; }
 
-    public Dictionary<EntityField, bool> IncludeValues { get; } = new()
+    public ImmutableDict<ListEntityField, bool> IncludedFields { get; } = entityType switch
     {
-        {EntityField.DisplayName, default},
-        {EntityField.Pronouns, default},
-        {EntityField.Birthdate, default},
-        {EntityField.ProxyTags, default},
-        {EntityField.MessageCount, default},
-        {EntityField.LastMessage, default},
-        {EntityField.LastSwitch, default},
-        {EntityField.CreationDate, default},
-        {EntityField.Avatar, default},
-        {EntityField.Description, default},
-        {EntityField.Groups, default},
-        {EntityField.Aliases, default},
+        ListEntity.Member => new()
+        {
+            {ListEntityField.DisplayName, default},
+            {ListEntityField.Pronouns, default},
+            {ListEntityField.Birthdate, default},
+            {ListEntityField.ProxyTags, default},
+            {ListEntityField.MessageCount, default},
+            {ListEntityField.LastMessage, default},
+            {ListEntityField.LastSwitch, default},
+            {ListEntityField.CreationDate, default},
+            {ListEntityField.Avatar, default},
+            {ListEntityField.Description, default},
+            {ListEntityField.Groups, default},
+            {ListEntityField.Aliases, default}
+        },
+        ListEntity.Group => new()
+        {
+            {ListEntityField.DisplayName, default},
+            {ListEntityField.Pronouns, default},
+            {ListEntityField.Birthdate, default},
+            {ListEntityField.CreationDate, default},
+            {ListEntityField.Avatar, default},
+            {ListEntityField.Description, default},
+        },
+        _ => []
     };
 
-    public Dictionary<EntityField, bool> WithFilter { get; } = new()
+    public ImmutableDict<ListEntityField, bool> WithFilter { get; } = entityType switch
     {
-        {EntityField.Avatar, default},
-        {EntityField.Pronouns, default},
-        {EntityField.DisplayName, default},
-        {EntityField.Birthdate, default},
-        {EntityField.ProxyTags, default},
-        // {EntityField.Groups, default},
-        {EntityField.Aliases, default},
-        {EntityField.Description, default},
-        {EntityField.Color, default},
+        ListEntity.Member => new()
+        {
+            {ListEntityField.Avatar, default},
+            {ListEntityField.Pronouns, default},
+            {ListEntityField.DisplayName, default},
+            {ListEntityField.Birthdate, default},
+            {ListEntityField.ProxyTags, default},
+            {ListEntityField.Groups, default},
+            {ListEntityField.Aliases, default},
+            {ListEntityField.Description, default},
+            {ListEntityField.Color, default}
+        },
+        ListEntity.Group => new()
+        {
+            {ListEntityField.Avatar, default},
+            {ListEntityField.DisplayName, default},
+            {ListEntityField.Members, default},
+            {ListEntityField.Description, default},
+            {ListEntityField.Color, default},
+        },
+        _ => []
     };
-    public Dictionary<EntityField, bool> WithOutFilter { get; } = new()
+    public ImmutableDict<ListEntityField, bool> WithOutFilter { get; } = entityType switch
     {
-        {EntityField.Avatar, default},
-        {EntityField.Pronouns, default},
-        {EntityField.DisplayName, default},
-        {EntityField.Birthdate, default},
-        {EntityField.ProxyTags, default},
-        // {EntityField.Groups, default},
-        {EntityField.Aliases, default},
-        {EntityField.Description, default},
-        {EntityField.Color, default},
+        ListEntity.Member => new()
+        {
+            {ListEntityField.Avatar, default},
+            {ListEntityField.Pronouns, default},
+            {ListEntityField.DisplayName, default},
+            {ListEntityField.Birthdate, default},
+            {ListEntityField.ProxyTags, default},
+            {ListEntityField.Groups, default},
+            {ListEntityField.Aliases, default},
+            {ListEntityField.Description, default},
+            {ListEntityField.Color, default}
+        },
+        ListEntity.Group => new()
+        {
+            {ListEntityField.Avatar, default},
+            {ListEntityField.DisplayName, default},
+            {ListEntityField.Members, default},
+            {ListEntityField.Description, default},
+            {ListEntityField.Color, default},
+        },
+        _ => []
     };
 
+    public IEnumerable<SortOption> SortOptions { get; } = entityType switch
+    {
+        ListEntity.Member => [
+            ListEntityField.Name,
+            ListEntityField.DisplayName,
+            ListEntityField.Hid,
+            ListEntityField.MessageCount,
+            ListEntityField.CreationDate,
+            ListEntityField.LastSwitch,
+            ListEntityField.LastMessage,
+            ListEntityField.Birthdate,
+            SortOption.Random,
+        ],
+        ListEntity.Group => [
+            ListEntityField.Name,
+            ListEntityField.DisplayName,
+            ListEntityField.Hid,
+            ListEntityField.CreationDate,
+            SortOption.Random,
+        ],
+        _ => []
+    };
 
     public bool ShowIds { get; set; } = true;
     public bool NumberItems { get; set; } = false;
 
     public bool SortIncludeMatch { get; set; } = false;
 
-    public int IncludedCount => IncludeValues.Sum(x => Convert.ToInt32(x.Value));
+    public int IncludedCount => IncludedFields.Sum(x => Convert.ToInt32(x.Value));
 
     // Reset the options that can change while the list is pulled up without resetting the ones that don't
     public void ResetDynamicOptions()
     {
-        foreach (var key in IncludeValues.Keys)
-            IncludeValues[key] = false;
+        foreach (var key in IncludedFields.Keys)
+            IncludedFields[key] = false;
         foreach (var key in WithFilter.Keys)
             WithFilter[key] = false;
         foreach (var key in WithOutFilter.Keys)
@@ -100,22 +159,38 @@ public class ListOptions
 
     public string CreateFilterString()
     {
+        string readableString(ListEntityField? field, bool plural = false)
+        {
+            return field switch
+            {
+                ListEntityField.Name => plural ? "names" : "name",
+                ListEntityField.DisplayName => plural ? "display names" : "display name",
+                ListEntityField.Hid => plural ? "IDs" : "ID",
+                ListEntityField.MessageCount => plural ? "message counts" : "message count",
+                ListEntityField.CreationDate => plural ? "creation dates" : "creation date",
+                ListEntityField.LastSwitch => plural ? "last switches" : "last switch",
+                ListEntityField.LastMessage => plural ? "last messages" : "last message",
+                ListEntityField.Birthdate => plural ? "birthdays" : "birthday",
+                ListEntityField.Avatar => plural ? "avatars" : "avatar",
+                ListEntityField.Pronouns => "pronouns",
+                ListEntityField.ProxyTags => "proxy tags",
+                ListEntityField.Groups => "groups",
+                ListEntityField.Members => "members",
+                ListEntityField.Aliases => "aliases",
+                ListEntityField.Description => plural ? "descriptions" : "description",
+                ListEntityField.Color => plural ? "colors" : "color",
+                ListEntityField.MemberCount => plural ? "member counts" : "member count",
+                _ => throw new ArgumentOutOfRangeException($"Couldn't find readable string for sort property {SortProperty}")
+            };
+        }
+
         var str = new StringBuilder();
         str.Append("Sorting ");
-        if (SortProperty != SortProperty.Random) str.Append("by ");
-        str.Append(SortProperty switch
+        if (SortProperty == SortOption.Random) str.Append("randomly");
+        else
         {
-            SortProperty.Name => "name",
-            SortProperty.Hid => "ID",
-            SortProperty.DisplayName => "display name",
-            SortProperty.CreationDate => "creation date",
-            SortProperty.LastMessage => "last message",
-            SortProperty.LastSwitch => "last switch",
-            SortProperty.MessageCount => "message count",
-            SortProperty.Birthdate => "birthday",
-            SortProperty.Random => "randomly",
-            _ => new ArgumentOutOfRangeException($"Couldn't find readable string for sort property {SortProperty}")
-        });
+            str.Append($"by {readableString(SortProperty.Field)}");
+        }
 
         if (Search != null)
         {
@@ -134,19 +209,19 @@ public class ListOptions
 
         if (WithOutFilter.Count(x => x.Value) > 1)
         {
-            str.Append($" Excluding members with {string.Join(", ", WithOutFilter.Where(x => x.Value).SkipLast(1).Select(x => x.Key.ToString()))}");
-            str.Append($"{(WithOutFilter.Count(x => x.Value) == 2 ? "" : ",")} or {WithOutFilter.Last(x => x.Value).Key}.");
+            str.Append($" Excluding members with {string.Join(", ", WithOutFilter.Where(x => x.Value).SkipLast(1).Select(x => readableString(x.Key, true)))}");
+            str.Append($"{(WithOutFilter.Count(x => x.Value) == 2 ? "" : ",")} or {readableString(WithOutFilter.Last(x => x.Value).Key, true)}.");
         }
         else if (WithOutFilter.Any(x => x.Value))
-            str.Append($" Excluding members with {WithOutFilter.First(x => x.Value).Key}.");
+            str.Append($" Excluding members with {readableString(WithOutFilter.First(x => x.Value).Key, true)}.");
 
         if (WithFilter.Count(x => x.Value) > 1)
         {
-            str.Append($" Excluding members without {string.Join(", ", WithFilter.Where(x => x.Value).SkipLast(1).Select(x => x.Key.ToString()))}");
-            str.Append($"{(WithFilter.Count(x => x.Value) == 2 ? "" : ",")} or {WithFilter.Last(x => x.Value).Key}.");
+            str.Append($" Excluding members without {string.Join(", ", WithFilter.Where(x => x.Value).SkipLast(1).Select(x => readableString(x.Key, true)))}");
+            str.Append($"{(WithFilter.Count(x => x.Value) == 2 ? "" : ",")} or {readableString(WithFilter.Last(x => x.Value).Key, true)}.");
         }
         else if (WithFilter.Any(x => x.Value))
-            str.Append($" Excluding members without {WithFilter.First(x => x.Value).Key}.");
+            str.Append($" Excluding members without {readableString(WithFilter.First(x => x.Value).Key, true)}.");
 
         return str.ToString();
     }
@@ -171,39 +246,42 @@ public static class ListOptionsExt
         IComparer<T> ReverseMaybe<T>(IComparer<T> c) =>
             opts.Reverse ? Comparer<T>.Create((a, b) => c.Compare(b, a)) : c;
 
-        var randGen = new global::System.Random();
+
+        if (opts.SortProperty == SortOption.Random)
+        {
+            var randGen = new global::System.Random();
+            return input.OrderBy(m => randGen.Next());
+        }
 
         var culture = StringComparer.InvariantCultureIgnoreCase;
-        return (opts.SortProperty switch
+        return (opts.SortProperty.Field switch
         {
             // As for the OrderByDescending HasValue calls: https://www.jerriepelser.com/blog/orderby-with-null-values/
             // We want nulls last no matter what, even if orders are reversed
-            SortProperty.Hid => input.OrderBy(m => m.Hid, ReverseMaybe(culture)),
-            SortProperty.Name => input.OrderBy(m => m.NameFor(ctx), ReverseMaybe(culture)),
-            SortProperty.CreationDate => input
+            ListEntityField.Hid => input.OrderBy(m => m.Hid, ReverseMaybe(culture)),
+            ListEntityField.Name => input.OrderBy(m => m.NameFor(ctx), ReverseMaybe(culture)),
+            ListEntityField.CreationDate => input
                 .OrderByDescending(m => m.MetadataPrivacy.CanAccess(ctx))
                 .ThenBy(m => m.MetadataPrivacy.Get(ctx, m.Created, default), ReverseMaybe(Comparer<Instant>.Default)),
-            SortProperty.MessageCount => input
+            ListEntityField.MessageCount => input
                 .OrderByDescending(m => m.MetadataPrivacy.CanAccess(ctx))
                 .ThenByDescending(m => m.MetadataPrivacy.Get(ctx, m.MessageCount, 0), ReverseMaybe(Comparer<int>.Default)),
-            SortProperty.DisplayName => input
+            ListEntityField.DisplayName => input
                 .OrderByDescending(m => m.DisplayName != null && m.NamePrivacy.CanAccess(ctx))
                 .ThenBy(m => m.NamePrivacy.Get(ctx, m.DisplayName), ReverseMaybe(culture)),
-            SortProperty.Birthdate => input
+            ListEntityField.Birthdate => input
                 .OrderByDescending(m => m.AnnualBirthday.HasValue && m.BirthdayPrivacy.CanAccess(ctx))
                 .ThenBy(m => m.BirthdayPrivacy.Get(ctx, m.AnnualBirthday), ReverseMaybe(Comparer<AnnualDate?>.Default)),
-            SortProperty.LastMessage => input
+            ListEntityField.LastMessage => input
                 .OrderByDescending(m => m.LastMessageTimestamp.HasValue)
                 .ThenByDescending(m => m.LastMessageTimestamp, ReverseMaybe(Comparer<Instant?>.Default)),
-            SortProperty.LastSwitch => input
+            ListEntityField.LastSwitch => input
                 .OrderByDescending(m => m.LastSwitchTime.HasValue && m.MetadataPrivacy.CanAccess(ctx))
                 .ThenByDescending(m => m.MetadataPrivacy.Get(ctx, m.LastSwitchTime), ReverseMaybe(Comparer<Instant?>.Default)),
-            SortProperty.Random => input
-                .OrderBy(m => randGen.Next()),
             _ => throw new ArgumentOutOfRangeException($"Unknown sort property {opts.SortProperty}")
         })
             // Lastly, add a by-name fallback order for collisions (generally hits w/ lots of null values)
-            .ThenBy(m => m.NameFor(ctx), culture).Select((m, i) => { m.Order = i + 1; return m; });
+            .ThenBy(m => m.NameFor(ctx), culture);
     }
 
     public static IEnumerable<ListedMember> FilterByMemberListOptions(this IEnumerable<ListedMember> input,
@@ -214,36 +292,40 @@ public static class ListOptionsExt
             {
                 switch (with.Key)
                 {
-                    case EntityField.Avatar:
+                    case ListEntityField.Avatar:
                         if (!(m.AvatarFor(ctx) is { }))
                             return false;
                         break;
-                    case EntityField.Pronouns:
+                    case ListEntityField.Pronouns:
                         if (!(m.PronounsFor(ctx) is { }))
                             return false;
                         break;
-                    case EntityField.DisplayName:
+                    case ListEntityField.DisplayName:
                         if (m.DisplayName == null)
                             return false;
                         break;
-                    case EntityField.Birthdate:
+                    case ListEntityField.Birthdate:
                         if (!(m.BirthdayFor(ctx) is { }))
                             return false;
                         break;
-                    case EntityField.ProxyTags:
+                    case ListEntityField.ProxyTags:
                         if (!(m.ProxyTagsFor(ctx) is { } tags) || tags.Count == 0)
                             return false;
                         break;
-                    case EntityField.Aliases:
+                    case ListEntityField.Aliases:
                         if (!(m.AliasesFor(ctx) is { } aliases) || aliases.Count == 0)
                             return false;
                         break;
-                    case EntityField.Description:
+                    case ListEntityField.Description:
                         if (!(m.DescriptionFor(ctx) is { }))
                             return false;
                         break;
-                    case EntityField.Color:
+                    case ListEntityField.Color:
                         if (m.Color == null)
+                            return false;
+                        break;
+                    case ListEntityField.Groups:
+                        if (!(m.GroupIds is { } groups) || groups.Count == 0)
                             return false;
                         break;
                 }
@@ -252,36 +334,40 @@ public static class ListOptionsExt
             {
                 switch (without.Key)
                 {
-                    case EntityField.Avatar:
+                    case ListEntityField.Avatar:
                         if (m.AvatarFor(ctx) is { })
                             return false;
                         break;
-                    case EntityField.Pronouns:
+                    case ListEntityField.Pronouns:
                         if (m.PronounsFor(ctx) is { })
                             return false;
                         break;
-                    case EntityField.DisplayName:
+                    case ListEntityField.DisplayName:
                         if (m.DisplayName != null)
                             return false;
                         break;
-                    case EntityField.Birthdate:
+                    case ListEntityField.Birthdate:
                         if (m.BirthdayFor(ctx) is { })
                             return false;
                         break;
-                    case EntityField.ProxyTags:
+                    case ListEntityField.ProxyTags:
                         if (m.ProxyTagsFor(ctx) is { } tags && tags.Count > 0)
                             return false;
                         break;
-                    case EntityField.Aliases:
+                    case ListEntityField.Aliases:
                         if (m.AliasesFor(ctx) is { } aliases && aliases.Count > 0)
                             return false;
                         break;
-                    case EntityField.Description:
+                    case ListEntityField.Description:
                         if (m.DescriptionFor(ctx) is { })
                             return false;
                         break;
-                    case EntityField.Color:
+                    case ListEntityField.Color:
                         if (m.Color != null)
+                            return false;
+                        break;
+                    case ListEntityField.Groups:
+                        if (m.GroupIds is { } groups && groups.Count > 0)
                             return false;
                         break;
                 }
@@ -296,24 +382,27 @@ public static class ListOptionsExt
         IComparer<T> ReverseMaybe<T>(IComparer<T> c) =>
             opts.Reverse ? Comparer<T>.Create((a, b) => c.Compare(b, a)) : c;
 
-        var randGen = new global::System.Random();
-
         var culture = StringComparer.InvariantCultureIgnoreCase;
-        return (opts.SortProperty switch
+
+        if (opts.SortProperty == SortOption.Random)
+        {
+            var randGen = new global::System.Random();
+            return input.OrderBy(g => randGen.Next());
+        }
+
+        return (opts.SortProperty.Field switch
         {
             // As for the OrderByDescending HasValue calls: https://www.jerriepelser.com/blog/orderby-with-null-values/
             // We want nulls last no matter what, even if orders are reversed
-            SortProperty.Hid => input.OrderBy(g => g.Hid, ReverseMaybe(culture)),
-            SortProperty.Name => input.OrderBy(g => g.NameFor(ctx), ReverseMaybe(culture)),
-            SortProperty.CreationDate => input
+            ListEntityField.Hid => input.OrderBy(g => g.Hid, ReverseMaybe(culture)),
+            ListEntityField.Name => input.OrderBy(g => g.NameFor(ctx), ReverseMaybe(culture)),
+            ListEntityField.CreationDate => input
                 .OrderByDescending(g => g.MetadataPrivacy.CanAccess(ctx))
                 .ThenBy(g => g.MetadataPrivacy.Get(ctx, g.Created, default), ReverseMaybe(Comparer<Instant>.Default)),
-            SortProperty.DisplayName => input
+            ListEntityField.DisplayName => input
                 .OrderByDescending(g => g.DisplayName != null && g.NamePrivacy.CanAccess(ctx))
                 .ThenBy(g => g.NamePrivacy.Get(ctx, g.DisplayName), ReverseMaybe(culture)),
-            SortProperty.Random => input
-                .OrderBy(g => randGen.Next()),
-            _ => throw new ArgumentOutOfRangeException($"Unknown sort property {opts.SortProperty}")
+            _ => throw new ArgumentOutOfRangeException($"Unknown or Invalid sort property {opts.SortProperty}")
         })
                 // Lastly, add a by-name fallback order for collisions (generally hits w/ lots of null values)
                 .ThenBy(g => g.NameFor(ctx), culture);
@@ -331,42 +420,23 @@ public static class ListOptionsExt
 
         // the check for multiple *sorting* property flags is done in SortProperty setter
 
-        static string ArticleMaybe(EntityField e) =>
+        static string ArticleMaybe(ListEntityField e) =>
             (e.ToString().Last() == 's' ? "" : "a ") + e;
     }
 }
 
-// Enums cannot have inheritance so this can't be a child of EntityField
-// Make sure if changing keys/adding keys the key is named the same in both SortProperty and EntityField
-// Or the "Same as Sort" info option in the short lists won't work
-public enum SortProperty
-{
-    Name,
-    DisplayName,
-    Hid,
-    MessageCount,
-    CreationDate,
-    LastSwitch,
-    LastMessage,
-    Birthdate,
-    Random
-}
-
-public enum EntityField
-{
-    DisplayName,
-    MessageCount,
-    CreationDate,
-    LastSwitch,
-    LastMessage,
-    Birthdate,
-    Avatar,
-    Pronouns,
-    ProxyTags,
-    Groups,
-    Aliases,
-    Description,
-    Color
-}
-
 public enum ListType { Short, Long }
+public enum ListEntity { Member, Group }
+
+public class ImmutableDict<TKey, TValue>: Dictionary<TKey, TValue> where TKey : notnull
+{
+    public new TValue this[TKey key]
+    {
+        get => (this as Dictionary<TKey, TValue>)[key];
+        set
+        {
+            if (ContainsKey(key))
+                (this as Dictionary<TKey, TValue>)[key] = value;
+        }
+    }
+}

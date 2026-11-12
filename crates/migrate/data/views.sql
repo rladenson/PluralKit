@@ -46,7 +46,15 @@ select members.*,
            when members.alias_privacy = 1 then members.aliases
             -- Any other privacy (rn just '2'), return empty array
            else ARRAY[]::text[]
-        end as public_aliases
+        end as public_aliases,
+
+        -- Aggregate list of group ids attached to each member
+       (
+           select array_agg(groups.id)
+            from group_members
+                left join groups on groups.id = group_members.group_id
+            where group_members.member_id = members.id
+       ) as group_ids
 
 from members;
 
