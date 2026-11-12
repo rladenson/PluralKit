@@ -94,7 +94,7 @@ public class Help
 
     private static string DescriptionOld = $"{Description}\n## Use the buttons below to see more info!";
 
-    public static string EmbedFooter(string linkSeparator) => $"-# PluralKit by @ske and contributors | Myriad design by @layl, icon by @tedkalashnikov, banner by @fulmine{linkSeparator}GitHub: https://github.com/PluralKit/PluralKit/ | Website: https://pluralkit.me/";
+    public static string EmbedFooter(string linkSeparator) => $"-# PluralKit by @ske and contributors | Myriad design by @layl, icon by @ninjisy, banner by @fulmine{linkSeparator}GitHub: https://github.com/PluralKit/PluralKit/ | Website: https://pluralkit.me/";
 
     public static Embed helpEmbed = new()
     {
